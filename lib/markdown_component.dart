@@ -3,6 +3,7 @@ part of 'gpt_markdown.dart';
 /// Markdown components
 abstract class MarkdownComponent {
   static final List<MarkdownComponent> components = [
+    CurrencyMd(),
     CodeBlockMd(),
     NewLines(),
     BlockQuote(),
@@ -26,6 +27,7 @@ abstract class MarkdownComponent {
   ];
 
   static final List<MarkdownComponent> inlineComponents = [
+    CurrencyMd(),
     ImageMd(),
     ATagMd(),
     TableMd(),
@@ -1003,5 +1005,24 @@ class CodeBlockMd extends BlockMd {
 
     return config.codeBuilder?.call(context, name, codes, closed) ??
         CodeField(name: name, codes: codes);
+  }
+}
+
+/// Currency component
+class CurrencyMd extends InlineMd {
+  @override
+  RegExp get exp => RegExp(r'(?<!\\)([₹\$])(\d[\d,.]*)');
+
+  @override
+  InlineSpan span(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    var match = exp.firstMatch(text.trim());
+    return TextSpan(
+      text: "${match?[1]}${match?[2]}", // Combine currency symbol and amount
+      style: config.style,
+    );
   }
 }
