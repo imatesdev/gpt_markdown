@@ -1,8 +1,9 @@
 part of 'gpt_markdown.dart';
 
 /// It creates a markdown widget closed to each other.
-class MdWidget extends StatelessWidget {
+class MdWidget extends StatefulWidget {
   const MdWidget(
+    this.context,
     this.exp,
     this.includeGlobalComponents, {
     super.key,
@@ -11,6 +12,7 @@ class MdWidget extends StatelessWidget {
 
   /// The expression to be displayed.
   final String exp;
+  final BuildContext context;
 
   /// Whether to include global components.
   final bool includeGlobalComponents;
@@ -19,25 +21,46 @@ class MdWidget extends StatelessWidget {
   final GptMarkdownConfig config;
 
   @override
-  Widget build(BuildContext context) {
-    List<InlineSpan> list = MarkdownComponent.generate(
-      context,
-      exp,
-      // .replaceAllMapped(
-      //     RegExp(
-      //       r"\\\[(.*?)\\\]|(\\begin.*?\\end{.*?})",
-      //       multiLine: true,
-      //       dotAll: true,
-      //     ), (match) {
-      //   //
-      //   String body = (match[1] ?? match[2])?.replaceAll("\n", " ") ?? "";
-      //   return "\\[$body\\]";
-      // }),
-      config,
-      includeGlobalComponents,
+  State<MdWidget> createState() => _MdWidgetState();
+}
+
+class _MdWidgetState extends State<MdWidget> {
+  List<InlineSpan> list = [];
+  @override
+  void initState() {
+    super.initState();
+    list = MarkdownComponent.generate(
+      widget.context,
+      widget.exp,
+      widget.config,
+      widget.includeGlobalComponents,
     );
-    return config.getRich(
-      TextSpan(children: list, style: config.style?.copyWith()),
+  }
+
+  @override
+  void didUpdateWidget(covariant MdWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.exp != widget.exp ||
+        !oldWidget.config.isSame(widget.config)) {
+      list = MarkdownComponent.generate(
+        context,
+        widget.exp,
+        widget.config,
+        widget.includeGlobalComponents,
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // List<InlineSpan> list = MarkdownComponent.generate(
+    //   context,
+    //   widget.exp,
+    //   widget.config,
+    //   widget.includeGlobalComponents,
+    // );
+    return widget.config.getRich(
+      TextSpan(children: list, style: widget.config.style?.copyWith()),
     );
   }
 }

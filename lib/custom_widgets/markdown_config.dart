@@ -198,4 +198,27 @@ class GptMarkdownConfig {
       overflow: overflow,
     );
   }
+
+  /// A method to check if the configuration is the same.
+  bool isSame(GptMarkdownConfig other) {
+    return style == other.style &&
+        textAlign == other.textAlign &&
+        textScaler == other.textScaler &&
+        maxLines == other.maxLines &&
+        overflow == other.overflow &&
+        followLinkColor == other.followLinkColor &&
+        // latexWorkaround == other.latexWorkaround &&
+        // components == other.components &&
+        // inlineComponents == other.inlineComponents &&
+        // latexBuilder == other.latexBuilder &&
+        // sourceTagBuilder == other.sourceTagBuilder &&
+        // codeBuilder == other.codeBuilder &&
+        // orderedListBuilder == other.orderedListBuilder &&
+        // unOrderedListBuilder == other.unOrderedListBuilder &&
+        // linkBuilder == other.linkBuilder &&
+        // imageBuilder == other.imageBuilder &&
+        // highlightBuilder == other.highlightBuilder &&
+        // onLinkTab == other.onLinkTab &&
+        textDirection == other.textDirection;
+  }
 }

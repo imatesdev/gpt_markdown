@@ -1,3 +1,7 @@
+## 1.0.19
+
+* Performance improvements.
+
 ## 1.0.18
 
 * dollarSignForLatex is added and by default it is false.

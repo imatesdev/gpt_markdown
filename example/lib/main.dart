@@ -76,6 +76,16 @@ class _MyHomePageState extends State<MyHomePage> {
   TextDirection _direction = TextDirection.ltr;
   final TextEditingController _controller = TextEditingController(
     text: r'''
+This is a sample markdown document.
+
+* **bold**
+* *italic*
+* **_bold and italic_**
+* ~~strikethrough~~
+* `code`
+* [link](https://www.google.com) ![image](https://www.google.com/images/branding/googlelogo/1x/googlelogo_color_272x92dp.png)
+
+
 ```markdown
 # Complex Markdown Document for Testing
 
