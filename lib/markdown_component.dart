@@ -202,16 +202,63 @@ class HTag extends BlockMd {
   ) {
     var theme = GptMarkdownTheme.of(context);
     var match = this.exp.firstMatch(text.trim());
-    var conf = config.copyWith(
-      style: [
-        theme.h1,
-        theme.h2,
-        theme.h3,
-        theme.h4,
-        theme.h5,
-        theme.h6,
-      ][match![1]!.length - 1]?.copyWith(color: config.style?.color),
-    );
+    int headerLevel = match![1]!.length - 1;
+
+    // Create more explicit heading styles with stronger styling enforcement
+    TextStyle? headingStyle;
+    switch (headerLevel) {
+      case 0: // h1
+        headingStyle = theme.h1?.copyWith(
+          fontWeight: FontWeight.w800,
+          fontSize: 24,
+          height: 1.2,
+          color: config.style?.color,
+        );
+        break;
+      case 1: // h2
+        headingStyle = theme.h2?.copyWith(
+          fontWeight: FontWeight.w700,
+          fontSize: 22,
+          height: 1.2,
+          color: config.style?.color,
+        );
+        break;
+      case 2: // h3
+        headingStyle = theme.h3?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 20,
+          height: 1.2,
+          color: config.style?.color,
+        );
+        break;
+      case 3: // h4
+        headingStyle = theme.h4?.copyWith(
+          fontWeight: FontWeight.w600,
+          fontSize: 18,
+          height: 1.2,
+          color: config.style?.color,
+        );
+        break;
+      case 4: // h5
+        headingStyle = theme.h5?.copyWith(
+          fontWeight: FontWeight.w500,
+          fontSize: 16,
+          height: 1.2,
+          color: config.style?.color,
+        );
+        break;
+      case 5: // h6
+        headingStyle = theme.h6?.copyWith(
+          fontWeight: FontWeight.w500,
+          fontSize: 14,
+          height: 1.2,
+          color: config.style?.color,
+        );
+        break;
+    }
+
+    var conf = config.copyWith(style: headingStyle);
+
     return config.getRich(
       TextSpan(
         children: [
@@ -510,11 +557,22 @@ class BoldMd extends InlineMd {
     final GptMarkdownConfig config,
   ) {
     var match = exp.firstMatch(text.trim());
-    var conf = config.copyWith(
-      style:
-          config.style?.copyWith(fontWeight: FontWeight.bold) ??
-          const TextStyle(fontWeight: FontWeight.bold),
+    // Ensure bold styling is more strongly enforced for cross-platform consistency
+    var boldStyle = TextStyle(
+      fontWeight:
+          FontWeight
+              .w700, // Using w700 instead of FontWeight.bold for more consistency
+      fontSize: config.style?.fontSize,
+      color: config.style?.color,
+      fontFamily: config.style?.fontFamily,
+      height: config.style?.height,
+      letterSpacing: config.style?.letterSpacing,
     );
+
+    var conf = config.copyWith(
+      style: config.style?.merge(boldStyle) ?? boldStyle,
+    );
+
     return TextSpan(
       children: MarkdownComponent.generate(
         context,
@@ -561,8 +619,7 @@ class StrikeMd extends InlineMd {
 /// Italic text component
 class ItalicMd extends InlineMd {
   @override
-  RegExp get exp =>
-      RegExp(r"(?:(?<!\*)\*(?<!\s)(.+?)(?<!\s)\*(?!\*))", dotAll: true);
+  RegExp get exp => RegExp(r"(?<!\*)\*(?!\*)(?<!\s)(.+?)(?<!\s)\*(?!\*)");
 
   @override
   InlineSpan span(
@@ -571,14 +628,27 @@ class ItalicMd extends InlineMd {
     final GptMarkdownConfig config,
   ) {
     var match = exp.firstMatch(text.trim());
-    var data = match?[1] ?? match?[2];
-    var conf = config.copyWith(
-      style: (config.style ?? const TextStyle()).copyWith(
-        fontStyle: FontStyle.italic,
-      ),
+    // Ensure italic styling is more strongly enforced for cross-platform consistency
+    var italicStyle = TextStyle(
+      fontStyle: FontStyle.italic,
+      fontSize: config.style?.fontSize,
+      color: config.style?.color,
+      fontFamily: config.style?.fontFamily,
+      height: config.style?.height,
+      letterSpacing: config.style?.letterSpacing,
     );
+
+    var conf = config.copyWith(
+      style: config.style?.merge(italicStyle) ?? italicStyle,
+    );
+
     return TextSpan(
-      children: MarkdownComponent.generate(context, "$data", conf, false),
+      children: MarkdownComponent.generate(
+        context,
+        "${match?[1]}",
+        conf,
+        false,
+      ),
       style: conf.style,
     );
   }
