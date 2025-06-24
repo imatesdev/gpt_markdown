@@ -601,46 +601,50 @@ class LatexMathMultiLine extends BlockMd {
     var builder =
         config.latexBuilder ??
         (BuildContext context, String tex, TextStyle textStyle, bool inline) =>
-            SelectableAdapter(
-              selectedText: tex,
-              child: Math.tex(
-                tex,
-                textStyle: textStyle,
-                mathStyle: MathStyle.display,
-                textScaleFactor: 1,
-                settings: const TexParserSettings(strict: Strict.ignore),
-                options: MathOptions(
-                  sizeUnderTextStyle: MathSize.large,
-                  color:
-                      config.style?.color ??
-                      Theme.of(context).colorScheme.onSurface,
-                  fontSize:
-                      config.style?.fontSize ??
-                      Theme.of(context).textTheme.bodyMedium?.fontSize,
-                  mathFontOptions: FontOptions(
-                    fontFamily: "Main",
-                    fontWeight: config.style?.fontWeight ?? FontWeight.normal,
-                    fontShape: FontStyle.normal,
-                  ),
-                  textFontOptions: FontOptions(
-                    fontFamily: "Main",
-                    fontWeight: config.style?.fontWeight ?? FontWeight.normal,
-                    fontShape: FontStyle.normal,
-                  ),
-                  style: MathStyle.display,
-                ),
-                onErrorFallback: (err) {
-                  return Text(
-                    workaround(mathText),
-                    textDirection: config.textDirection,
-                    style: textStyle.copyWith(
-                      color:
-                          (!kDebugMode)
-                              ? null
-                              : Theme.of(context).colorScheme.error,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
+              child: SelectableAdapter(
+                selectedText: tex,
+                child: Math.tex(
+                  tex,
+                  textStyle: textStyle,
+                  mathStyle: MathStyle.display,
+                  textScaleFactor: 1,
+                  settings: const TexParserSettings(strict: Strict.ignore),
+                  options: MathOptions(
+                    sizeUnderTextStyle: MathSize.large,
+                    color:
+                        config.style?.color ??
+                        Theme.of(context).colorScheme.onSurface,
+                    fontSize:
+                        config.style?.fontSize ??
+                        Theme.of(context).textTheme.bodyMedium?.fontSize,
+                    mathFontOptions: FontOptions(
+                      fontFamily: "Main",
+                      fontWeight: config.style?.fontWeight ?? FontWeight.normal,
+                      fontShape: FontStyle.normal,
                     ),
-                  );
-                },
+                    textFontOptions: FontOptions(
+                      fontFamily: "Main",
+                      fontWeight: config.style?.fontWeight ?? FontWeight.normal,
+                      fontShape: FontStyle.normal,
+                    ),
+                    style: MathStyle.display,
+                  ),
+                  onErrorFallback: (err) {
+                    return Text(
+                      workaround(mathText),
+                      textDirection: config.textDirection,
+                      style: textStyle.copyWith(
+                        color:
+                            (!kDebugMode)
+                                ? null
+                                : Theme.of(context).colorScheme.error,
+                      ),
+                    );
+                  },
+                ),
               ),
             );
     return builder(
@@ -676,46 +680,50 @@ class LatexMath extends InlineMd {
     var builder =
         config.latexBuilder ??
         (BuildContext context, String tex, TextStyle textStyle, bool inline) =>
-            SelectableAdapter(
-              selectedText: tex,
-              child: Math.tex(
-                tex,
-                textStyle: textStyle,
-                mathStyle: MathStyle.display,
-                textScaleFactor: 1,
-                settings: const TexParserSettings(strict: Strict.ignore),
-                options: MathOptions(
-                  sizeUnderTextStyle: MathSize.large,
-                  color:
-                      config.style?.color ??
-                      Theme.of(context).colorScheme.onSurface,
-                  fontSize:
-                      config.style?.fontSize ??
-                      Theme.of(context).textTheme.bodyMedium?.fontSize,
-                  mathFontOptions: FontOptions(
-                    fontFamily: "Main",
-                    fontWeight: config.style?.fontWeight ?? FontWeight.normal,
-                    fontShape: FontStyle.normal,
-                  ),
-                  textFontOptions: FontOptions(
-                    fontFamily: "Main",
-                    fontWeight: config.style?.fontWeight ?? FontWeight.normal,
-                    fontShape: FontStyle.normal,
-                  ),
-                  style: MathStyle.display,
-                ),
-                onErrorFallback: (err) {
-                  return Text(
-                    workaround(mathText),
-                    textDirection: config.textDirection,
-                    style: textStyle.copyWith(
-                      color:
-                          (!kDebugMode)
-                              ? null
-                              : Theme.of(context).colorScheme.error,
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const ClampingScrollPhysics(),
+              child: SelectableAdapter(
+                selectedText: tex,
+                child: Math.tex(
+                  tex,
+                  textStyle: textStyle,
+                  mathStyle: MathStyle.display,
+                  textScaleFactor: 1,
+                  settings: const TexParserSettings(strict: Strict.ignore),
+                  options: MathOptions(
+                    sizeUnderTextStyle: MathSize.large,
+                    color:
+                        config.style?.color ??
+                        Theme.of(context).colorScheme.onSurface,
+                    fontSize:
+                        config.style?.fontSize ??
+                        Theme.of(context).textTheme.bodyMedium?.fontSize,
+                    mathFontOptions: FontOptions(
+                      fontFamily: "Main",
+                      fontWeight: config.style?.fontWeight ?? FontWeight.normal,
+                      fontShape: FontStyle.normal,
                     ),
-                  );
-                },
+                    textFontOptions: FontOptions(
+                      fontFamily: "Main",
+                      fontWeight: config.style?.fontWeight ?? FontWeight.normal,
+                      fontShape: FontStyle.normal,
+                    ),
+                    style: MathStyle.display,
+                  ),
+                  onErrorFallback: (err) {
+                    return Text(
+                      workaround(mathText),
+                      textDirection: config.textDirection,
+                      style: textStyle.copyWith(
+                        color:
+                            (!kDebugMode)
+                                ? null
+                                : Theme.of(context).colorScheme.error,
+                      ),
+                    );
+                  },
+                ),
               ),
             );
     return WidgetSpan(
