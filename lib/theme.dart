@@ -56,14 +56,19 @@ class GptMarkdownThemeData extends ThemeExtension<GptMarkdownThemeData> {
     );
     themeData = themeData.copyWith(textTheme: typography);
     TextTheme textTheme = themeData.textTheme;
-    return GptMarkdownThemeData._fromTheme(themeData, textTheme).copyWith(
+    
+    // Create a base theme with default values
+    final baseTheme = GptMarkdownThemeData._fromTheme(themeData, textTheme);
+    
+    // Apply provided styles with proper inheritance
+    return baseTheme.copyWith(
       highlightColor: highlightColor,
-      h1: h1,
-      h2: h2,
-      h3: h3,
-      h4: h4,
-      h5: h5,
-      h6: h6,
+      h1: h1 != null ? baseTheme.h1?.merge(h1) ?? h1 : baseTheme.h1,
+      h2: h2 != null ? baseTheme.h2?.merge(h2) ?? h2 : baseTheme.h2,
+      h3: h3 != null ? baseTheme.h3?.merge(h3) ?? h3 : baseTheme.h3,
+      h4: h4 != null ? baseTheme.h4?.merge(h4) ?? h4 : baseTheme.h4,
+      h5: h5 != null ? baseTheme.h5?.merge(h5) ?? h5 : baseTheme.h5,
+      h6: h6 != null ? baseTheme.h6?.merge(h6) ?? h6 : baseTheme.h6,
       hrLineThickness: hrLineThickness,
       hrLineColor: hrLineColor,
       linkColor: linkColor,
