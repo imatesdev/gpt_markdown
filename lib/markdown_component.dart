@@ -176,7 +176,7 @@ class IndentMd extends BlockMd {
               TextSpan(
                 children: MarkdownComponent.generate(
                   context,
-                  match?[2]?.trim() ?? "",
+                  match?[2] ?? "",
                   conf,
                   false,
                 ),
@@ -201,16 +201,35 @@ class HTag extends BlockMd {
   ) {
     var theme = GptMarkdownTheme.of(context);
     var match = this.exp.firstMatch(text.trim());
+    
+    // Get the heading level (1-6)
+    int headingLevel = match![1]!.length - 1;
+    
+    // Get the appropriate style based on heading level
+    TextStyle? headingStyle;
+    switch (headingLevel) {
+      case 0: headingStyle = theme.h1;
+      case 1: headingStyle = theme.h2;
+      case 2: headingStyle = theme.h3;
+      case 3: headingStyle = theme.h4;
+      case 4: headingStyle = theme.h5;
+      case 5: headingStyle = theme.h6;
+      default: headingStyle = theme.h1;
+    }
+    
+    // Ensure the heading style is applied correctly
     var conf = config.copyWith(
-      style: [
-        theme.h1,
-        theme.h2,
-        theme.h3,
-        theme.h4,
-        theme.h5,
-        theme.h6,
-      ][match![1]!.length - 1]?.copyWith(color: config.style?.color),
+      style: headingStyle?.copyWith(
+        color: headingStyle.color ?? config.style?.color,
+        fontSize: headingStyle.fontSize,
+        fontWeight: headingStyle.fontWeight,
+        decoration: headingStyle.decoration,
+        decorationColor: headingStyle.decorationColor,
+        decorationThickness: headingStyle.decorationThickness,
+        height: headingStyle.height,
+      ),
     );
+    
     return config.getRich(
       TextSpan(
         children: [
