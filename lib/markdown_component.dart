@@ -679,8 +679,7 @@ class UnderlineMd extends InlineMd {
     // Apply the style directly to this TextSpan without further processing
     return TextSpan(
       text: match[1],
-      // style: underlineStyle,
-      style: TextStyle(color: Colors.red),
+      style: underlineStyle,
     );
   }
 }
@@ -1002,25 +1001,24 @@ class DirectUrlMd extends InlineMd {
 
     // Default rendering
     var theme = GptMarkdownTheme.of(context);
-    // return WidgetSpan(
-    //   child: LinkButton(
-    //     hoverColor: theme.linkHoverColor,
-    //     color: theme.linkColor,
-    //     onPressed: () {
-    //       config.onLinkTap?.call(url, url);
-    //     },
-    //     text: url,
-    //     config: config,
-    //   ),
-    // );
-    return WidgetSpan(child: Text(url, style: TextStyle(color: Colors.red)));
+    return WidgetSpan(
+      child: LinkButton(
+        hoverColor: theme.linkHoverColor,
+        color: theme.linkColor,
+        onPressed: () {
+          config.onLinkTap?.call(url, url);
+        },
+        text: url,
+        config: config,
+      ),
+    );
   }
 }
 
 /// Image component
 class ImageMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"\!\[[^\[\]]*\]\([^\s]*\)");
+  RegExp get exp => RegExp(r"!\[(.*?)\]\((.*?)\)");
 
   @override
   InlineSpan span(
@@ -1028,83 +1026,112 @@ class ImageMd extends InlineMd {
     String text,
     final GptMarkdownConfig config,
   ) {
-    // First try to find the basic pattern
-    final basicMatch = RegExp(r'\!\[([^\[\]]*)\]\(').firstMatch(text.trim());
-    if (basicMatch == null) {
-      return const TextSpan();
+    var match = exp.firstMatch(text.trim());
+    if (match == null || match.groupCount < 2) {
+      return TextSpan(text: text, style: config.style);
     }
 
-    final altText = basicMatch.group(1) ?? '';
-    final urlStart = basicMatch.end;
+    final altText = match.group(1) ?? '';
+    final urlWithPossibleTitle = match.group(2) ?? '';
 
-    // Now find the balanced closing parenthesis
-    int parenCount = 0;
-    int urlEnd = urlStart;
+    // Parse URL and optional title with a simpler approach
+    String url = urlWithPossibleTitle;
+    String title = '';
 
-    for (int i = urlStart; i < text.length; i++) {
-      final char = text[i];
+    // Simple parsing: URL is everything before the first space,
+    // title is everything between quotes after that
+    final spaceIndex = urlWithPossibleTitle.indexOf(' ');
+    if (spaceIndex > 0) {
+      url = urlWithPossibleTitle.substring(0, spaceIndex);
+      final remaining = urlWithPossibleTitle.substring(spaceIndex).trim();
 
-      if (char == '(') {
-        parenCount++;
-      } else if (char == ')') {
-        if (parenCount == 0) {
-          // This is the closing parenthesis of the image
-          urlEnd = i;
-          break;
-        } else {
-          parenCount--;
+      // Look for title in double quotes
+      final doubleQuoteMatch = RegExp(r'"([^"]*)"').firstMatch(remaining);
+      if (doubleQuoteMatch != null) {
+        title = doubleQuoteMatch.group(1) ?? '';
+      } 
+      // Or look for title in single quotes
+      else {
+        final singleQuoteMatch = RegExp(r"'([^']*)'").firstMatch(remaining);
+        if (singleQuoteMatch != null) {
+          title = singleQuoteMatch.group(1) ?? '';
         }
       }
     }
 
-    if (urlEnd == urlStart) {
-      // No closing parenthesis found
-      return const TextSpan();
-    }
-
-    final url = text.substring(urlStart, urlEnd).trim();
-
-    double? height;
+    // Parse dimensions from alt text if present
     double? width;
+    double? height;
     if (altText.isNotEmpty) {
-      var size = RegExp(r"^([0-9]+)?x?([0-9]+)?").firstMatch(altText.trim());
-      width = double.tryParse(size?[1]?.toString().trim() ?? 'a');
-      height = double.tryParse(size?[2]?.toString().trim() ?? 'a');
+      final sizeMatch = RegExp(r"^(\d+)?x?(\d+)?").firstMatch(altText.trim());
+      if (sizeMatch != null) {
+        final widthStr = sizeMatch.group(1);
+        final heightStr = sizeMatch.group(2);
+        width = widthStr != null ? double.tryParse(widthStr) : null;
+        height = heightStr != null ? double.tryParse(heightStr) : null;
+      }
     }
 
+    // Create the image widget
     final Widget image;
     if (config.imageBuilder != null) {
       image = config.imageBuilder!(context, url);
     } else {
-      image = SizedBox(
-        width: width,
-        height: height,
-        child: Image(
-          image: NetworkImage(url),
-          loadingBuilder: (
-            BuildContext context,
-            Widget child,
-            ImageChunkEvent? loadingProgress,
-          ) {
-            if (loadingProgress == null) {
-              return child;
-            }
-            return CustomImageLoading(
-              progress:
-                  loadingProgress.expectedTotalBytes != null
-                      ? loadingProgress.cumulativeBytesLoaded /
-                          loadingProgress.expectedTotalBytes!
-                      : 1,
-            );
-          },
-          fit: BoxFit.fill,
-          errorBuilder: (context, error, stackTrace) {
-            return const CustomImageError();
-          },
+      image = Container(
+        constraints: BoxConstraints(
+          maxWidth: width ?? double.infinity,
+          maxHeight: height ?? double.infinity,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Image(
+              image: NetworkImage(url),
+              loadingBuilder: (
+                BuildContext context,
+                Widget child,
+                ImageChunkEvent? loadingProgress,
+              ) {
+                if (loadingProgress == null) {
+                  return child;
+                }
+                return CustomImageLoading(
+                  progress:
+                      loadingProgress.expectedTotalBytes != null
+                          ? loadingProgress.cumulativeBytesLoaded /
+                              loadingProgress.expectedTotalBytes!
+                          : 1,
+                );
+              },
+              fit: BoxFit.contain,
+              errorBuilder: (context, error, stackTrace) {
+                print("Image error: $error for URL: $url");
+                return CustomImageError();
+              },
+            ),
+            if (title.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: (config.style?.fontSize ?? 14) * 0.9,
+                    color: config.style?.color?.withOpacity(0.8),
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+          ],
         ),
       );
     }
-    return WidgetSpan(alignment: PlaceholderAlignment.bottom, child: image);
+    
+    return WidgetSpan(
+      alignment: PlaceholderAlignment.bottom,
+      child: image,
+    );
   }
 }
 
