@@ -578,7 +578,7 @@ class StrikeMd extends InlineMd {
 class ItalicMd extends InlineMd {
   @override
   RegExp get exp =>
-      RegExp(r"(?:(?<!\*)\*(?<!\s)(.+?)(?<!\s)\*(?!\*))", dotAll: true);
+      RegExp(r"(?:(?<!\*)\*(?<!\s)(.+?)(?<!\s)\*(?!\*)|(?<!_)_(?<!\s)(.+?)(?<!\s)_(?!_))", dotAll: true);
 
   @override
   InlineSpan span(
