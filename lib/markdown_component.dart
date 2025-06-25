@@ -677,8 +677,13 @@ class UnderlineMd extends InlineMd {
     );
     
     // Apply the style directly to this TextSpan without further processing
+    // return TextSpan(
+    //   text: match[1],
+    //   // style: underlineStyle,
+    //   style: TextStyle(color: Colors.red),
+    // );
     return TextSpan(
-      text: match[1],
+      text: "under-line",
       // style: underlineStyle,
       style: TextStyle(color: Colors.red),
     );
