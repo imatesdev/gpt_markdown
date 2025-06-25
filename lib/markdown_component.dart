@@ -1018,7 +1018,7 @@ class DirectUrlMd extends InlineMd {
 /// Image component
 class ImageMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"!\[(.*?)\]\((.*?)\)");
+  RegExp get exp => RegExp(r"!\[(.*?)\]\((.*?)(\s*\{.*?\})?\)");
 
   @override
   InlineSpan span(
@@ -1033,6 +1033,7 @@ class ImageMd extends InlineMd {
 
     final altText = match.group(1) ?? '';
     final urlWithPossibleTitle = match.group(2) ?? '';
+    final attributesText = match.group(3) ?? '';
 
     // Parse URL and optional title with a simpler approach
     String url = urlWithPossibleTitle;
@@ -1062,6 +1063,9 @@ class ImageMd extends InlineMd {
     // Parse dimensions from alt text if present
     double? width;
     double? height;
+    TextAlign? textAlign;
+    
+    // First check for dimensions in alt text (legacy support)
     if (altText.isNotEmpty) {
       final sizeMatch = RegExp(r"^(\d+)?x?(\d+)?").firstMatch(altText.trim());
       if (sizeMatch != null) {
@@ -1069,6 +1073,39 @@ class ImageMd extends InlineMd {
         final heightStr = sizeMatch.group(2);
         width = widthStr != null ? double.tryParse(widthStr) : null;
         height = heightStr != null ? double.tryParse(heightStr) : null;
+      }
+    }
+    
+    // Parse attributes from curly braces if present
+    if (attributesText.isNotEmpty) {
+      // Remove curly braces and trim
+      final cleanAttributes = attributesText.trim().replaceAll(RegExp(r'^\s*\{|\}\s*$'), '');
+      
+      // Parse width, height, and alignment
+      final widthMatch = RegExp(r'width\s*=\s*(\d+)').firstMatch(cleanAttributes);
+      if (widthMatch != null) {
+        width = double.tryParse(widthMatch.group(1) ?? '');
+      }
+      
+      final heightMatch = RegExp(r'height\s*=\s*(\d+)').firstMatch(cleanAttributes);
+      if (heightMatch != null) {
+        height = double.tryParse(heightMatch.group(1) ?? '');
+      }
+      
+      final alignMatch = RegExp(r'align\s*=\s*(\w+)').firstMatch(cleanAttributes);
+      if (alignMatch != null) {
+        final alignValue = alignMatch.group(1)?.toLowerCase() ?? '';
+        switch (alignValue) {
+          case 'left':
+            textAlign = TextAlign.left;
+            break;
+          case 'right':
+            textAlign = TextAlign.right;
+            break;
+          case 'center':
+            textAlign = TextAlign.center;
+            break;
+        }
       }
     }
 
@@ -1082,12 +1119,21 @@ class ImageMd extends InlineMd {
           maxWidth: width ?? double.infinity,
           maxHeight: height ?? double.infinity,
         ),
+        width: width,
+        height: height,
+        alignment: textAlign == TextAlign.left ? Alignment.centerLeft :
+                 textAlign == TextAlign.right ? Alignment.centerRight :
+                 Alignment.center,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
+          crossAxisAlignment: textAlign == TextAlign.left ? CrossAxisAlignment.start :
+                             textAlign == TextAlign.right ? CrossAxisAlignment.end :
+                             CrossAxisAlignment.center,
           children: [
             Image(
               image: NetworkImage(url),
+              width: width,
+              height: height,
               loadingBuilder: (
                 BuildContext context,
                 Widget child,
@@ -1120,7 +1166,7 @@ class ImageMd extends InlineMd {
                     color: config.style?.color?.withOpacity(0.8),
                     fontStyle: FontStyle.italic,
                   ),
-                  textAlign: TextAlign.center,
+                  textAlign: textAlign ?? TextAlign.center,
                 ),
               ),
           ],
