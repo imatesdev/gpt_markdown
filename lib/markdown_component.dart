@@ -677,13 +677,8 @@ class UnderlineMd extends InlineMd {
     );
     
     // Apply the style directly to this TextSpan without further processing
-    // return TextSpan(
-    //   text: match[1],
-    //   // style: underlineStyle,
-    //   style: TextStyle(color: Colors.red),
-    // );
     return TextSpan(
-      text: "under-line",
+      text: match[1],
       // style: underlineStyle,
       style: TextStyle(color: Colors.red),
     );
@@ -1007,17 +1002,18 @@ class DirectUrlMd extends InlineMd {
 
     // Default rendering
     var theme = GptMarkdownTheme.of(context);
-    return WidgetSpan(
-      child: LinkButton(
-        hoverColor: theme.linkHoverColor,
-        color: theme.linkColor,
-        onPressed: () {
-          config.onLinkTap?.call(url, url);
-        },
-        text: url,
-        config: config,
-      ),
-    );
+    // return WidgetSpan(
+    //   child: LinkButton(
+    //     hoverColor: theme.linkHoverColor,
+    //     color: theme.linkColor,
+    //     onPressed: () {
+    //       config.onLinkTap?.call(url, url);
+    //     },
+    //     text: url,
+    //     config: config,
+    //   ),
+    // );
+    return WidgetSpan(child: Text(url, style: TextStyle(color: Colors.red)));
   }
 }
 
