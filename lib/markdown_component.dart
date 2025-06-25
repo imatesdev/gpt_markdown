@@ -26,6 +26,7 @@ abstract class MarkdownComponent {
     StrikeMd(),
     BoldMd(),
     ItalicMd(),
+    UnderlineMd(),
     LatexMath(),
     LatexMathMultiLine(),
     HighlightedText(),
@@ -352,9 +353,7 @@ class BlockQuote extends InlineMd {
   @override
   bool get inline => false;
   @override
-  RegExp get exp =>
-  // RegExp(r"(?<=\n\n)(\ +)(.+?)(?=\n\n)", dotAll: true, multiLine: true);
-  RegExp(
+  RegExp get exp => RegExp(
     r"(?:(?:^)\ *>[^\n]+)(?:(?:\n)\ *>[^\n]+)*",
     dotAll: true,
     multiLine: true,
@@ -367,43 +366,80 @@ class BlockQuote extends InlineMd {
     final GptMarkdownConfig config,
   ) {
     var match = exp.firstMatch(text);
-    var dataBuilder = StringBuffer();
-    var m = match?[0] ?? '';
-    for (var each in m.split('\n')) {
-      if (each.startsWith(RegExp(r'\ *>'))) {
-        var subString = each.trimLeft().substring(1);
-        if (subString.startsWith(' ')) {
-          subString = subString.substring(1);
+    if (match == null) {
+      return TextSpan(text: text, style: config.style);
+    }
+    
+    var m = match[0] ?? '';
+    List<String> lines = m.split('\n');
+    
+    // Process the content to extract the actual text without '>' markers
+    List<String> processedLines = [];
+    bool hasNestedContent = false;
+    
+    for (var line in lines) {
+      if (line.trim().isEmpty) continue;
+      
+      String trimmedLine = line.trimLeft();
+      if (trimmedLine.startsWith('>')) {
+        // Count the number of consecutive '>' characters
+        int depth = 0;
+        int i = 0;
+        while (i < trimmedLine.length && trimmedLine[i] == '>') {
+          depth++;
+          i++;
+          // Skip a space after '>' if present
+          if (i < trimmedLine.length && trimmedLine[i] == ' ') {
+            i++;
+          }
         }
-        dataBuilder.writeln(subString);
+        
+        if (depth > 1) {
+          hasNestedContent = true;
+          // For nested quotes, keep one level of nesting and process the rest
+          processedLines.add('>' + trimmedLine.substring(i));
+        } else {
+          // For top-level quotes, just keep the content
+          processedLines.add(trimmedLine.substring(i));
+        }
       } else {
-        dataBuilder.writeln(each);
+        processedLines.add(trimmedLine);
       }
     }
-    var data = dataBuilder.toString().trim();
-    var child = TextSpan(
-      children: MarkdownComponent.generate(context, data, config, true),
+    
+    String processedContent = processedLines.join('\n');
+    
+    // Create the blockquote widget
+    Widget blockQuoteWidget = BlockQuoteWidget(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      direction: config.textDirection,
+      width: 3,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(start: 8.0),
+        child: hasNestedContent 
+          // For nested content, use MdWidget to process markdown within
+          ? MdWidget(context, processedContent, true, config: config)
+          // For simple content, use standard text processing
+          : config.getRich(TextSpan(
+              children: MarkdownComponent.generate(
+                context, 
+                processedContent, 
+                config, 
+                true
+              )
+            )),
+      ),
     );
-    return TextSpan(
-      children: [
-        WidgetSpan(
-          child: Directionality(
-            textDirection: config.textDirection,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
-              child: BlockQuoteWidget(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                direction: config.textDirection,
-                width: 3,
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.only(start: 8.0),
-                  child: config.getRich(child),
-                ),
-              ),
-            ),
-          ),
+    
+    // Wrap in padding and directionality
+    return WidgetSpan(
+      child: Directionality(
+        textDirection: config.textDirection,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: blockQuoteWidget,
         ),
-      ],
+      ),
     );
   }
 }
@@ -611,6 +647,44 @@ class ItalicMd extends InlineMd {
   }
 }
 
+class UnderlineMd extends InlineMd {
+  @override
+  // Simplified regex pattern that better matches __text__ without conflicts
+  RegExp get exp => RegExp(r"__([^_]+?)__");
+
+  @override
+  InlineSpan span(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    var match = exp.firstMatch(text.trim());
+    if (match == null || match[1] == null) {
+      return TextSpan(text: text, style: config.style);
+    }
+    
+    // Create a dedicated style for underline with explicit properties
+    final underlineStyle = TextStyle(
+      decoration: TextDecoration.underline,
+      decorationColor: config.style?.color,
+      decorationThickness: 1.5, // Increased thickness for better visibility
+      decorationStyle: TextDecorationStyle.solid,
+      color: config.style?.color,
+      fontSize: config.style?.fontSize,
+      fontFamily: config.style?.fontFamily,
+      fontWeight: config.style?.fontWeight,
+    );
+    
+    // Apply the style directly to this TextSpan without further processing
+    return TextSpan(
+      text: match[1],
+      // style: underlineStyle,
+      style: TextStyle(color: Colors.red),
+    );
+  }
+}
+
+/// Latex math multi-line component
 class LatexMathMultiLine extends BlockMd {
   @override
   String get expString => (r"\ *\\\[((?:.)*?)\\\]|(\ *\\begin.*?\\end{.*?})");
@@ -919,7 +993,7 @@ class DirectUrlMd extends InlineMd {
     if (builder != null) {
       return WidgetSpan(
         child: GestureDetector(
-          onTap: () => config.onLinkTab?.call(url, url),
+          onTap: () => config.onLinkTap?.call(url, url),
           child: builder(context, url, url, config.style ?? const TextStyle()),
         ),
       );
@@ -932,7 +1006,7 @@ class DirectUrlMd extends InlineMd {
         hoverColor: theme.linkHoverColor,
         color: theme.linkColor,
         onPressed: () {
-          config.onLinkTab?.call(url, url);
+          config.onLinkTap?.call(url, url);
         },
         text: url,
         config: config,
