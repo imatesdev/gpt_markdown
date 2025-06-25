@@ -15,6 +15,7 @@ abstract class MarkdownComponent {
     CheckBoxMd(),
     HrLine(),
     IndentMd(),
+    DirectUrlMd(), // Add DirectUrlMd to the components list
   ];
 
   static final List<MarkdownComponent> inlineComponents = [
@@ -29,6 +30,7 @@ abstract class MarkdownComponent {
     LatexMathMultiLine(),
     HighlightedText(),
     SourceTag(),
+    DirectUrlMd(), // Add DirectUrlMd to the inlineComponents list
   ];
 
   /// Generate widget for markdown widget
@@ -201,22 +203,29 @@ class HTag extends BlockMd {
   ) {
     var theme = GptMarkdownTheme.of(context);
     var match = this.exp.firstMatch(text.trim());
-    
+
     // Get the heading level (1-6)
     int headingLevel = match![1]!.length - 1;
-    
+
     // Get the appropriate style based on heading level
     TextStyle? headingStyle;
     switch (headingLevel) {
-      case 0: headingStyle = theme.h1;
-      case 1: headingStyle = theme.h2;
-      case 2: headingStyle = theme.h3;
-      case 3: headingStyle = theme.h4;
-      case 4: headingStyle = theme.h5;
-      case 5: headingStyle = theme.h6;
-      default: headingStyle = theme.h1;
+      case 0:
+        headingStyle = theme.h1;
+      case 1:
+        headingStyle = theme.h2;
+      case 2:
+        headingStyle = theme.h3;
+      case 3:
+        headingStyle = theme.h4;
+      case 4:
+        headingStyle = theme.h5;
+      case 5:
+        headingStyle = theme.h6;
+      default:
+        headingStyle = theme.h1;
     }
-    
+
     // Ensure the heading style is applied correctly
     var conf = config.copyWith(
       style: headingStyle?.copyWith(
@@ -229,7 +238,7 @@ class HTag extends BlockMd {
         height: headingStyle.height,
       ),
     );
-    
+
     return config.getRich(
       TextSpan(
         children: [
@@ -577,8 +586,10 @@ class StrikeMd extends InlineMd {
 /// Italic text component
 class ItalicMd extends InlineMd {
   @override
-  RegExp get exp =>
-      RegExp(r"(?:(?<!\*)\*(?<!\s)(.+?)(?<!\s)\*(?!\*)|(?<!_)_(?<!\s)(.+?)(?<!\s)_(?!_))", dotAll: true);
+  RegExp get exp => RegExp(
+    r"(?:(?<!\*)\*(?<!\s)(.+?)(?<!\s)\*(?!\*)|(?<!_)_(?<!\s)(.+?)(?<!\s)_(?!_))",
+    dotAll: true,
+  );
 
   @override
   InlineSpan span(
@@ -879,6 +890,51 @@ class ATagMd extends InlineMd {
           config.onLinkTap?.call(url, linkText);
         },
         text: linkText,
+        config: config,
+      ),
+    );
+  }
+}
+
+/// Direct URL component
+class DirectUrlMd extends InlineMd {
+  @override
+  RegExp get exp => RegExp(r"<(https?:\/\/[^\s>]+)>");
+
+  @override
+  InlineSpan span(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    var match = exp.firstMatch(text.trim());
+    if (match?[1] == null) {
+      return const TextSpan();
+    }
+
+    final url = match?[1] ?? "";
+    var builder = config.linkBuilder;
+
+    // Use custom builder if provided
+    if (builder != null) {
+      return WidgetSpan(
+        child: GestureDetector(
+          onTap: () => config.onLinkTab?.call(url, url),
+          child: builder(context, url, url, config.style ?? const TextStyle()),
+        ),
+      );
+    }
+
+    // Default rendering
+    var theme = GptMarkdownTheme.of(context);
+    return WidgetSpan(
+      child: LinkButton(
+        hoverColor: theme.linkHoverColor,
+        color: theme.linkColor,
+        onPressed: () {
+          config.onLinkTab?.call(url, url);
+        },
+        text: url,
         config: config,
       ),
     );
