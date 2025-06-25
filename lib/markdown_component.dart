@@ -15,6 +15,7 @@ abstract class MarkdownComponent {
     CheckBoxMd(),
     HrLine(),
     IndentMd(),
+    UnderlineMd(),
     DirectUrlMd(), // Add DirectUrlMd to the components list
   ];
 
