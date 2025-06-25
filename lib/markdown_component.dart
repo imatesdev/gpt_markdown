@@ -370,17 +370,17 @@ class BlockQuote extends InlineMd {
     if (match == null) {
       return TextSpan(text: text, style: config.style);
     }
-    
+
     var m = match[0] ?? '';
     List<String> lines = m.split('\n');
-    
+
     // Process the content to extract the actual text without '>' markers
     List<String> processedLines = [];
     bool hasNestedContent = false;
-    
+
     for (var line in lines) {
       if (line.trim().isEmpty) continue;
-      
+
       String trimmedLine = line.trimLeft();
       if (trimmedLine.startsWith('>')) {
         // Count the number of consecutive '>' characters
@@ -394,7 +394,7 @@ class BlockQuote extends InlineMd {
             i++;
           }
         }
-        
+
         if (depth > 1) {
           hasNestedContent = true;
           // For nested quotes, keep one level of nesting and process the rest
@@ -407,9 +407,9 @@ class BlockQuote extends InlineMd {
         processedLines.add(trimmedLine);
       }
     }
-    
+
     String processedContent = processedLines.join('\n');
-    
+
     // Create the blockquote widget
     Widget blockQuoteWidget = BlockQuoteWidget(
       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -417,21 +417,24 @@ class BlockQuote extends InlineMd {
       width: 3,
       child: Padding(
         padding: const EdgeInsetsDirectional.only(start: 8.0),
-        child: hasNestedContent 
-          // For nested content, use MdWidget to process markdown within
-          ? MdWidget(context, processedContent, true, config: config)
-          // For simple content, use standard text processing
-          : config.getRich(TextSpan(
-              children: MarkdownComponent.generate(
-                context, 
-                processedContent, 
-                config, 
-                true
-              )
-            )),
+        child:
+            hasNestedContent
+                // For nested content, use MdWidget to process markdown within
+                ? MdWidget(context, processedContent, true, config: config)
+                // For simple content, use standard text processing
+                : config.getRich(
+                  TextSpan(
+                    children: MarkdownComponent.generate(
+                      context,
+                      processedContent,
+                      config,
+                      true,
+                    ),
+                  ),
+                ),
       ),
     );
-    
+
     // Wrap in padding and directionality
     return WidgetSpan(
       child: Directionality(
@@ -663,7 +666,7 @@ class UnderlineMd extends InlineMd {
     if (match == null || match[1] == null) {
       return TextSpan(text: text, style: config.style);
     }
-    
+
     // Create a dedicated style for underline with explicit properties
     final underlineStyle = TextStyle(
       decoration: TextDecoration.underline,
@@ -675,12 +678,9 @@ class UnderlineMd extends InlineMd {
       fontFamily: config.style?.fontFamily,
       fontWeight: config.style?.fontWeight,
     );
-    
+
     // Apply the style directly to this TextSpan without further processing
-    return TextSpan(
-      text: match[1],
-      style: underlineStyle,
-    );
+    return TextSpan(text: match[1], style: underlineStyle);
   }
 }
 
@@ -1018,7 +1018,7 @@ class DirectUrlMd extends InlineMd {
 /// Image component
 class ImageMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"!\[(.*?)\]\((.*?)(\s*\{.*?\})?\)");
+  RegExp get exp => RegExp(r"!\[(.*?)\]\((.*?)\)(\s*\{[^}]*\})?");
 
   @override
   InlineSpan span(
@@ -1050,7 +1050,7 @@ class ImageMd extends InlineMd {
       final doubleQuoteMatch = RegExp(r'"([^"]*)"').firstMatch(remaining);
       if (doubleQuoteMatch != null) {
         title = doubleQuoteMatch.group(1) ?? '';
-      } 
+      }
       // Or look for title in single quotes
       else {
         final singleQuoteMatch = RegExp(r"'([^']*)'").firstMatch(remaining);
@@ -1064,7 +1064,7 @@ class ImageMd extends InlineMd {
     double? width;
     double? height;
     TextAlign? textAlign;
-    
+
     // First check for dimensions in alt text (legacy support)
     if (altText.isNotEmpty) {
       final sizeMatch = RegExp(r"^(\d+)?x?(\d+)?").firstMatch(altText.trim());
@@ -1075,24 +1075,33 @@ class ImageMd extends InlineMd {
         height = heightStr != null ? double.tryParse(heightStr) : null;
       }
     }
-    
+
     // Parse attributes from curly braces if present
     if (attributesText.isNotEmpty) {
       // Remove curly braces and trim
-      final cleanAttributes = attributesText.trim().replaceAll(RegExp(r'^\s*\{|\}\s*$'), '');
-      
+      final cleanAttributes = attributesText.trim().replaceAll(
+        RegExp(r'^\s*\{|\}\s*$'),
+        '',
+      );
+
       // Parse width, height, and alignment
-      final widthMatch = RegExp(r'width\s*=\s*(\d+)').firstMatch(cleanAttributes);
+      final widthMatch = RegExp(
+        r'width\s*=\s*(\d+)',
+      ).firstMatch(cleanAttributes);
       if (widthMatch != null) {
         width = double.tryParse(widthMatch.group(1) ?? '');
       }
-      
-      final heightMatch = RegExp(r'height\s*=\s*(\d+)').firstMatch(cleanAttributes);
+
+      final heightMatch = RegExp(
+        r'height\s*=\s*(\d+)',
+      ).firstMatch(cleanAttributes);
       if (heightMatch != null) {
         height = double.tryParse(heightMatch.group(1) ?? '');
       }
-      
-      final alignMatch = RegExp(r'align\s*=\s*(\w+)').firstMatch(cleanAttributes);
+
+      final alignMatch = RegExp(
+        r'align\s*=\s*(\w+)',
+      ).firstMatch(cleanAttributes);
       if (alignMatch != null) {
         final alignValue = alignMatch.group(1)?.toLowerCase() ?? '';
         switch (alignValue) {
@@ -1121,14 +1130,20 @@ class ImageMd extends InlineMd {
         ),
         width: width,
         height: height,
-        alignment: textAlign == TextAlign.left ? Alignment.centerLeft :
-                 textAlign == TextAlign.right ? Alignment.centerRight :
-                 Alignment.center,
+        alignment:
+            textAlign == TextAlign.left
+                ? Alignment.centerLeft
+                : textAlign == TextAlign.right
+                ? Alignment.centerRight
+                : Alignment.center,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: textAlign == TextAlign.left ? CrossAxisAlignment.start :
-                             textAlign == TextAlign.right ? CrossAxisAlignment.end :
-                             CrossAxisAlignment.center,
+          crossAxisAlignment:
+              textAlign == TextAlign.left
+                  ? CrossAxisAlignment.start
+                  : textAlign == TextAlign.right
+                  ? CrossAxisAlignment.end
+                  : CrossAxisAlignment.center,
           children: [
             Image(
               image: NetworkImage(url),
@@ -1173,11 +1188,8 @@ class ImageMd extends InlineMd {
         ),
       );
     }
-    
-    return WidgetSpan(
-      alignment: PlaceholderAlignment.bottom,
-      child: image,
-    );
+
+    return WidgetSpan(alignment: PlaceholderAlignment.bottom, child: image);
   }
 }
 
