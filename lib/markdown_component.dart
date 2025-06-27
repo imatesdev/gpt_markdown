@@ -31,7 +31,6 @@ abstract class MarkdownComponent {
     LatexMath(),
     LatexMathMultiLine(),
     HighlightedText(),
-    VariableMd(), // Add VariableMd component
     SourceTag(),
     DirectUrlMd(), // Add DirectUrlMd to the inlineComponents list
   ];
@@ -520,7 +519,7 @@ class OrderedList extends BlockMd {
 
 class HighlightedText extends InlineMd {
   @override
-  RegExp get exp => RegExp(r"`(?!`)(.+?)(?<!`)`(?!`)");
+  RegExp get exp => RegExp(r"(`(?!`)(.+?)(?<!`)`(?!`))|(<\^>(.+?)<\^>)");
 
   @override
   InlineSpan span(
@@ -529,7 +528,16 @@ class HighlightedText extends InlineMd {
     final GptMarkdownConfig config,
   ) {
     var match = exp.firstMatch(text.trim());
-    var highlightedText = match?[1] ?? "";
+
+    // Determine which pattern matched (backticks or <^> tags)
+    String highlightedText = "";
+    if (match?[1] != null) {
+      // Backtick pattern matched
+      highlightedText = match?[2] ?? "";
+    } else if (match?[3] != null) {
+      // Variable pattern matched
+      highlightedText = match?[4] ?? "";
+    }
 
     if (config.highlightBuilder != null) {
       return WidgetSpan(
@@ -559,6 +567,21 @@ class HighlightedText extends InlineMd {
                 ..strokeCap = StrokeCap.round
                 ..strokeJoin = StrokeJoin.round,
         );
+
+    // Check if the highlighted text contains nested patterns
+    if (highlightedText.contains("`") || highlightedText.contains("<^>")) {
+      // Process nested markdown within the highlighted text
+      var conf = config.copyWith(style: style);
+      return TextSpan(
+        children: MarkdownComponent.generate(
+          context,
+          highlightedText,
+          conf,
+          false,
+        ),
+        style: style,
+      );
+    }
 
     return TextSpan(text: highlightedText, style: style);
   }
@@ -940,6 +963,30 @@ class ATagMd extends InlineMd {
 
     var builder = config.linkBuilder;
 
+    // Process the link text for any inline code or variable patterns
+    List<InlineSpan> processedLinkText = [];
+    if (linkText.contains('`') || linkText.contains('<^>')) {
+      // Create a new config with link styling
+      var linkStyle =
+          config.style?.copyWith(
+            color: GptMarkdownTheme.of(context).linkColor,
+            decoration: TextDecoration.underline,
+          ) ??
+          TextStyle(
+            color: GptMarkdownTheme.of(context).linkColor,
+            decoration: TextDecoration.underline,
+          );
+
+      var linkConfig = config.copyWith(style: linkStyle);
+
+      processedLinkText = MarkdownComponent.generate(
+        context,
+        linkText,
+        linkConfig,
+        false,
+      );
+    }
+
     // Use custom builder if provided
     if (builder != null) {
       return WidgetSpan(
@@ -957,6 +1004,26 @@ class ATagMd extends InlineMd {
 
     // Default rendering
     var theme = GptMarkdownTheme.of(context);
+
+    // If we have processed link text with formatting, use it
+    if (processedLinkText.isNotEmpty) {
+      return WidgetSpan(
+        child: GestureDetector(
+          onTap: () => config.onLinkTap?.call(url, linkText),
+          child: RichText(
+            text: TextSpan(
+              children: processedLinkText,
+              style: TextStyle(
+                color: theme.linkColor,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Otherwise use the standard LinkButton
     return WidgetSpan(
       child: LinkButton(
         hoverColor: theme.linkHoverColor,
@@ -1332,39 +1399,54 @@ class CurrencyMd extends InlineMd {
   }
 }
 
-/// Variable text component
-class VariableMd extends InlineMd {
-  @override
-  RegExp get exp => RegExp(r"<\^>(.+?)<\^>");
-
-  @override
-  InlineSpan span(
-    BuildContext context,
-    String text,
-    final GptMarkdownConfig config,
-  ) {
-    var match = exp.firstMatch(text.trim());
-    var variableText = match?[1] ?? "";
-
-    // Use the same style as HighlightedText but with a different color
-    var style =
-        config.style?.copyWith(
-          fontWeight: FontWeight.bold,
-          background:
-              Paint()
-                ..color = Theme.of(context).colorScheme.tertiaryContainer
-                ..strokeCap = StrokeCap.round
-                ..strokeJoin = StrokeJoin.round,
-        ) ??
-        TextStyle(
-          fontWeight: FontWeight.bold,
-          background:
-              Paint()
-                ..color = Theme.of(context).colorScheme.tertiaryContainer
-                ..strokeCap = StrokeCap.round
-                ..strokeJoin = StrokeJoin.round,
-        );
-
-    return TextSpan(text: variableText, style: style);
-  }
-}
+/// Variable text component - Merged into HighlightedText class
+// class VariableMd extends InlineMd {
+//   @override
+//   RegExp get exp => RegExp(r"<\^>(.+?)<\^>");
+// 
+//   @override
+//   InlineSpan span(
+//     BuildContext context,
+//     String text,
+//     final GptMarkdownConfig config,
+//   ) {
+//     var match = exp.firstMatch(text.trim());
+//     var variableText = match?[1] ?? "";
+// 
+//     // Use the same style as HighlightedText with the same background color
+//     var style =
+//         config.style?.copyWith(
+//           fontWeight: FontWeight.bold,
+//           background:
+//               Paint()
+//                 ..color = GptMarkdownTheme.of(context).highlightColor
+//                 ..strokeCap = StrokeCap.round
+//                 ..strokeJoin = StrokeJoin.round,
+//         ) ??
+//         TextStyle(
+//           fontWeight: FontWeight.bold,
+//           background:
+//               Paint()
+//                 ..color = GptMarkdownTheme.of(context).highlightColor
+//                 ..strokeCap = StrokeCap.round
+//                 ..strokeJoin = StrokeJoin.round,
+//         );
+// 
+//     // Check if the variable text contains inline code patterns
+//     if (variableText.contains("`")) {
+//       // Process nested markdown within the variable text
+//       var conf = config.copyWith(style: style);
+//       return TextSpan(
+//         children: MarkdownComponent.generate(
+//           context,
+//           variableText,
+//           conf,
+//           false,
+//         ),
+//         style: style,
+//       );
+//     }
+// 
+//     return TextSpan(text: variableText, style: style);
+//   }
+// }
