@@ -31,6 +31,7 @@ abstract class MarkdownComponent {
     LatexMath(),
     LatexMathMultiLine(),
     HighlightedText(),
+    VariableMd(), // Add VariableMd component
     SourceTag(),
     DirectUrlMd(), // Add DirectUrlMd to the inlineComponents list
   ];
@@ -1328,5 +1329,42 @@ class CurrencyMd extends InlineMd {
       text: "${match?[1]}${match?[2]}", // Combine currency symbol and amount
       style: config.style,
     );
+  }
+}
+
+/// Variable text component
+class VariableMd extends InlineMd {
+  @override
+  RegExp get exp => RegExp(r"<\^>(.+?)<\^>");
+
+  @override
+  InlineSpan span(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    var match = exp.firstMatch(text.trim());
+    var variableText = match?[1] ?? "";
+
+    // Use the same style as HighlightedText but with a different color
+    var style =
+        config.style?.copyWith(
+          fontWeight: FontWeight.bold,
+          background:
+              Paint()
+                ..color = Theme.of(context).colorScheme.tertiaryContainer
+                ..strokeCap = StrokeCap.round
+                ..strokeJoin = StrokeJoin.round,
+        ) ??
+        TextStyle(
+          fontWeight: FontWeight.bold,
+          background:
+              Paint()
+                ..color = Theme.of(context).colorScheme.tertiaryContainer
+                ..strokeCap = StrokeCap.round
+                ..strokeJoin = StrokeJoin.round,
+        );
+
+    return TextSpan(text: variableText, style: style);
   }
 }
