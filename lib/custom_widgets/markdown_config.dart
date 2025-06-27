@@ -53,6 +53,10 @@ typedef LinkBuilder =
 typedef HighlightBuilder =
     Widget Function(BuildContext context, String text, TextStyle style);
 
+/// A builder function for the variable.
+typedef VariableBuilder =
+    Widget Function(BuildContext context, String text, TextStyle style);
+
 /// A builder function for the image.
 typedef ImageBuilder = Widget Function(BuildContext context, String imageUrl);
 
@@ -75,6 +79,7 @@ class GptMarkdownConfig {
     this.codeBuilder,
     this.sourceTagBuilder,
     this.highlightBuilder,
+    this.variableBuilder,
     this.orderedListBuilder,
     this.unOrderedListBuilder,
     this.linkBuilder,
@@ -130,6 +135,9 @@ class GptMarkdownConfig {
   /// The highlight builder.
   final HighlightBuilder? highlightBuilder;
 
+  /// The variable builder.
+  final VariableBuilder? variableBuilder;
+
   /// The link builder.
   final LinkBuilder? linkBuilder;
 
@@ -157,6 +165,7 @@ class GptMarkdownConfig {
     final int? maxLines,
     final TextOverflow? overflow,
     final HighlightBuilder? highlightBuilder,
+    final VariableBuilder? variableBuilder,
     final LinkBuilder? linkBuilder,
     final ImageBuilder? imageBuilder,
     final OrderedListBuilder? orderedListBuilder,
@@ -178,6 +187,7 @@ class GptMarkdownConfig {
       maxLines: maxLines ?? this.maxLines,
       overflow: overflow ?? this.overflow,
       highlightBuilder: highlightBuilder ?? this.highlightBuilder,
+      variableBuilder: variableBuilder ?? this.variableBuilder,
       linkBuilder: linkBuilder ?? this.linkBuilder,
       imageBuilder: imageBuilder ?? this.imageBuilder,
       orderedListBuilder: orderedListBuilder ?? this.orderedListBuilder,
