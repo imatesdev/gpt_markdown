@@ -18,6 +18,8 @@ abstract class MarkdownComponent {
     UnderlineMd(),
     DirectUrlMd(), // Add DirectUrlMd to the components list
     CalloutMd(), // Add CalloutMd to the components list
+    DetailsMd(), // Add DetailsMd to the components list
+    YoutubeMd(), // Add YoutubeMd to the components list
   ];
 
   static final List<MarkdownComponent> inlineComponents = [
@@ -1623,5 +1625,272 @@ class CalloutMd extends BlockMd {
         ),
       );
     }
+  }
+}
+
+/// Details component for expandable content
+class DetailsMd extends BlockMd {
+  @override
+  String get expString =>
+      (r"\[details(?:\s+(open|closed))?\s+(.*?)\n([\s\S]*?)\]");
+
+  @override
+  Widget build(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    final exp = RegExp(expString);
+    final match = exp.firstMatch(text);
+    if (match == null) {
+      return const SizedBox.shrink();
+    }
+
+    final isOpenByDefault = match.group(1) == 'open';
+    final summaryText = match.group(2)?.trim() ?? '';
+    final content = match.group(3)?.trim() ?? '';
+
+    return DetailsWidget(
+      isOpenByDefault: isOpenByDefault,
+      summaryText: summaryText,
+      content: content,
+      config: config,
+    );
+  }
+}
+
+/// Widget to display expandable details/summary content
+class DetailsWidget extends StatefulWidget {
+  final bool isOpenByDefault;
+  final String summaryText;
+  final String content;
+  final GptMarkdownConfig config;
+
+  const DetailsWidget({
+    Key? key,
+    required this.isOpenByDefault,
+    required this.summaryText,
+    required this.content,
+    required this.config,
+  }) : super(key: key);
+
+  @override
+  State<DetailsWidget> createState() => _DetailsWidgetState();
+}
+
+class _DetailsWidgetState extends State<DetailsWidget> {
+  late bool _isExpanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpanded = widget.isOpenByDefault;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      decoration: BoxDecoration(
+        color:
+            theme.brightness == Brightness.dark
+                ? Colors.grey[850]
+                : Colors.grey[100],
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Summary header (always visible)
+          InkWell(
+            onTap: () {
+              setState(() {
+                _isExpanded = !_isExpanded;
+              });
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: SelectableText.rich(
+                      TextSpan(
+                        children: MarkdownComponent.generate(
+                          context,
+                          widget.summaryText,
+                          widget.config,
+                          true,
+                        ),
+                        style: theme.textTheme.titleMedium,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    _isExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Expandable content
+          if (_isExpanded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 16.0),
+              child: SelectableText.rich(
+                TextSpan(
+                  children: MarkdownComponent.generate(
+                    context,
+                    widget.content,
+                    widget.config,
+                    true,
+                  ),
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// YouTube embed component
+class YoutubeMd extends BlockMd {
+  @override
+  String get expString =>
+      r'\[youtube\s+([a-zA-Z0-9_-]+)(?:\s+(\d+))?(?:\s+(\d+))?\]';
+
+  @override
+  Widget build(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    final exp = RegExp(expString);
+    final match = exp.firstMatch(text);
+    if (match == null) {
+      return const SizedBox.shrink();
+    }
+
+    final videoId = match.group(1) ?? '';
+    // Default height is 270, width is 480 if not specified
+    final height = int.tryParse(match.group(2) ?? '') ?? 270;
+    final width = int.tryParse(match.group(3) ?? '') ?? 480;
+
+    return YoutubeEmbed(videoId: videoId, height: height, width: width);
+  }
+}
+
+/// Widget to display YouTube embeds
+class YoutubeEmbed extends StatelessWidget {
+  final String videoId;
+  final int height;
+  final int width;
+
+  const YoutubeEmbed({
+    Key? key,
+    required this.videoId,
+    required this.height,
+    required this.width,
+  }) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    // Create a thumbnail with play button that opens the video when tapped
+    final thumbnailUrl = 'https://img.youtube.com/vi/$videoId/0.jpg';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      constraints: BoxConstraints(
+        maxWidth: width.toDouble(),
+        maxHeight: height.toDouble(),
+      ),
+      child: AspectRatio(
+        aspectRatio: width / height,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Thumbnail image
+            Container(
+              decoration: BoxDecoration(
+                color: Colors.black,
+                image: DecorationImage(
+                  image: NetworkImage(thumbnailUrl),
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ),
+            // Play button overlay
+            Container(
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              padding: const EdgeInsets.all(8),
+              child: const Icon(
+                Icons.play_arrow,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+            // Clickable area
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  // Open YouTube video in browser
+                  final url = Uri.parse(
+                    'https://www.youtube.com/watch?v=$videoId',
+                  );
+                  _launchURL(url);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Helper method to launch URLs
+  void _launchURL(Uri url) async {
+    try {
+      final canLaunch = await url_launcher.canLaunchUrl(url);
+      if (canLaunch) {
+        await url_launcher.launchUrl(
+          url,
+          mode: url_launcher.LaunchMode.externalApplication,
+        );
+      } else {
+        debugPrint('Could not launch $url');
+      }
+    } catch (e) {
+      debugPrint('Error checking if URL can be launched: $e');
+    }
+  }
+}
+
+// URL launcher functions
+Future<bool> canLaunchUrl(Uri url) async {
+  try {
+    return await url_launcher.canLaunchUrl(url);
+  } catch (e) {
+    debugPrint('Error checking if URL can be launched: $e');
+    return false;
+  }
+}
+
+Future<bool> launchUrl(Uri url) async {
+  try {
+    return await url_launcher.launchUrl(url);
+  } catch (e) {
+    debugPrint('Error launching URL: $e');
+    return false;
   }
 }

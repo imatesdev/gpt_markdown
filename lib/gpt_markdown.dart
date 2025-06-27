@@ -8,6 +8,7 @@ import 'package:gpt_markdown/custom_widgets/custom_error_image.dart';
 import 'package:gpt_markdown/custom_widgets/custom_rb_cb.dart';
 import 'package:gpt_markdown/custom_widgets/selectable_adapter.dart';
 import 'package:gpt_markdown/custom_widgets/unordered_ordered_list.dart';
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'dart:math';
 
 import 'custom_widgets/code_field.dart';

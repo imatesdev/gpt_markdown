@@ -11,6 +11,7 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_math_fork: ^0.7.3
+  url_launcher: ^6.2.5
 
 dev_dependencies:
   flutter_test:
@@ -22,6 +23,10 @@ flutter:
     - family: JetBrainsMono
       fonts:
         - asset: lib/fonts/JetBrainsMono-Regular.ttf
+
+# Add dependency overrides to fix version conflicts
+dependency_overrides:
+  flutter_lints: ^5.0.0
 
 topics:
   - markdown
