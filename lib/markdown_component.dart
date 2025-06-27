@@ -1582,8 +1582,8 @@ class CalloutMd extends BlockMd {
               ),
               const SizedBox(height: 8),
               // Main content
-              RichText(
-                text: TextSpan(
+              SelectableText.rich(
+                TextSpan(
                   children: MarkdownComponent.generate(
                     context,
                     mainContent,
@@ -1609,8 +1609,8 @@ class CalloutMd extends BlockMd {
         ),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
-          child: RichText(
-            text: TextSpan(
+          child: SelectableText.rich(
+            TextSpan(
               children: MarkdownComponent.generate(
                 context,
                 getDisplayText(displayType, mainContent),
