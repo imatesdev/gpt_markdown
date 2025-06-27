@@ -83,6 +83,7 @@ class GptMarkdownConfig {
     this.overflow,
     this.components,
     this.inlineComponents,
+    this.calloutColors,
   });
 
   /// The direction of the text.
@@ -142,6 +143,9 @@ class GptMarkdownConfig {
   /// The list of inline components.
   final List<MarkdownComponent>? inlineComponents;
 
+  /// The callout colors.
+  final Map<String, Color>? calloutColors;
+
   /// A copy of the configuration with the specified parameters.
   GptMarkdownConfig copyWith({
     TextStyle? style,
@@ -163,6 +167,7 @@ class GptMarkdownConfig {
     final UnOrderedListBuilder? unOrderedListBuilder,
     final List<MarkdownComponent>? components,
     final List<MarkdownComponent>? inlineComponents,
+    final Map<String, Color>? calloutColors,
   }) {
     return GptMarkdownConfig(
       style: style ?? this.style,
@@ -184,6 +189,7 @@ class GptMarkdownConfig {
       unOrderedListBuilder: unOrderedListBuilder ?? this.unOrderedListBuilder,
       components: components ?? this.components,
       inlineComponents: inlineComponents ?? this.inlineComponents,
+      calloutColors: calloutColors ?? this.calloutColors,
     );
   }
 

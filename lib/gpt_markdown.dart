@@ -43,6 +43,7 @@ class GptMarkdown extends StatelessWidget {
     this.components,
     this.inlineComponents,
     this.useDollarSignsForLatex = false,
+    this.calloutColors,
   });
 
   /// The direction of the text.
@@ -99,6 +100,9 @@ class GptMarkdown extends StatelessWidget {
 
   /// Whether to use dollar signs for LaTeX.
   final bool useDollarSignsForLatex;
+
+  /// The callout colors.
+  final Map<String, Color>? calloutColors;
 
   /// The list of components.
   ///  ```dart
@@ -158,7 +162,7 @@ class GptMarkdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     String tex = data.trim();
-    
+
     // First handle escaped currency amounts by removing the escape
     tex = tex.replaceAllMapped(
       RegExp(r'\\\$(\d[\d,.]*)'),
@@ -166,10 +170,7 @@ class GptMarkdown extends StatelessWidget {
     );
 
     // Also handle & symbol in table headers
-    tex = tex.replaceAllMapped(
-      RegExp(r'\\\&'),
-      (match) => '&',
-    );
+    tex = tex.replaceAllMapped(RegExp(r'\\\&'), (match) => '&');
 
     if (useDollarSignsForLatex) {
       // Then handle block LaTeX with $$ ... $$
@@ -211,6 +212,7 @@ class GptMarkdown extends StatelessWidget {
           unOrderedListBuilder: unOrderedListBuilder,
           components: components,
           inlineComponents: inlineComponents,
+          calloutColors: calloutColors,
         ),
       ),
     );

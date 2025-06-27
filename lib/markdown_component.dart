@@ -17,6 +17,7 @@ abstract class MarkdownComponent {
     IndentMd(),
     UnderlineMd(),
     DirectUrlMd(), // Add DirectUrlMd to the components list
+    CalloutMd(), // Add CalloutMd to the components list
   ];
 
   static final List<MarkdownComponent> inlineComponents = [
@@ -33,6 +34,7 @@ abstract class MarkdownComponent {
     HighlightedText(),
     SourceTag(),
     DirectUrlMd(), // Add DirectUrlMd to the inlineComponents list
+    CalloutMd(), // Add CalloutMd to the components list
   ];
 
   /// Generate widget for markdown widget
@@ -1399,54 +1401,227 @@ class CurrencyMd extends InlineMd {
   }
 }
 
-/// Variable text component - Merged into HighlightedText class
-// class VariableMd extends InlineMd {
-//   @override
-//   RegExp get exp => RegExp(r"<\^>(.+?)<\^>");
-// 
-//   @override
-//   InlineSpan span(
-//     BuildContext context,
-//     String text,
-//     final GptMarkdownConfig config,
-//   ) {
-//     var match = exp.firstMatch(text.trim());
-//     var variableText = match?[1] ?? "";
-// 
-//     // Use the same style as HighlightedText with the same background color
-//     var style =
-//         config.style?.copyWith(
-//           fontWeight: FontWeight.bold,
-//           background:
-//               Paint()
-//                 ..color = GptMarkdownTheme.of(context).highlightColor
-//                 ..strokeCap = StrokeCap.round
-//                 ..strokeJoin = StrokeJoin.round,
-//         ) ??
-//         TextStyle(
-//           fontWeight: FontWeight.bold,
-//           background:
-//               Paint()
-//                 ..color = GptMarkdownTheme.of(context).highlightColor
-//                 ..strokeCap = StrokeCap.round
-//                 ..strokeJoin = StrokeJoin.round,
-//         );
-// 
-//     // Check if the variable text contains inline code patterns
-//     if (variableText.contains("`")) {
-//       // Process nested markdown within the variable text
-//       var conf = config.copyWith(style: style);
-//       return TextSpan(
-//         children: MarkdownComponent.generate(
-//           context,
-//           variableText,
-//           conf,
-//           false,
-//         ),
-//         style: style,
-//       );
-//     }
-// 
-//     return TextSpan(text: variableText, style: style);
-//   }
-// }
+/// Callout component
+class CalloutMd extends BlockMd {
+  @override
+  RegExp get exp => RegExp(
+    r'<\$>\[(note|warning|info|draft)\]([\s\S]*?)<\$>',
+    multiLine: true,
+  );
+
+  @override
+  String get expString => r'<\$>\[(note|warning|info|draft)\]([\s\S]*?)<\$>';
+
+  // Define callout colors based on type
+  Map<String, Color> getCalloutColors(
+    BuildContext context,
+    GptMarkdownConfig config,
+  ) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // Get custom colors from config if available
+    final configColors = config.calloutColors;
+    if (configColors != null && configColors.isNotEmpty) {
+      return configColors;
+    }
+
+    // Default colors
+    return {
+      'note': isDarkMode ? const Color(0xFF1E4620) : const Color(0xFFE8F5E9),
+      'warning': isDarkMode ? const Color(0xFF4E342E) : const Color(0xFFFFCDD2),
+      'info': isDarkMode ? const Color(0xFF0D47A1) : const Color(0xFFE3F2FD),
+      'draft': isDarkMode ? const Color(0xFF4A148C) : const Color(0xFFE1BEE7),
+    };
+  }
+
+  // Define icons based on type
+  IconData getCalloutIcon(String type) {
+    switch (type) {
+      case 'note':
+        return Icons.info_outline;
+      case 'warning':
+        return Icons.warning_amber_outlined;
+      case 'info':
+        return Icons.lightbulb_outline;
+      case 'draft':
+        return Icons.edit_note_outlined;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
+  @override
+  Widget build(
+    BuildContext context,
+    String text,
+    final GptMarkdownConfig config,
+  ) {
+    // Try both patterns without string replacements
+
+    // Pattern for unescaped syntax: <$>[type]content<$>
+    final RegExp pattern = RegExp(
+      r'<\$>\[(note|warning|info|draft)\]([\s\S]*?)<\$>',
+      multiLine: true,
+    );
+
+    // Pattern for escaped syntax: <\$>[type]content<\$>
+    final RegExp escapedPattern = RegExp(
+      r'<\\\$>\[(note|warning|info|draft)\]([\s\S]*?)<\\\$>',
+      multiLine: true,
+    );
+
+    // Check for escaped pattern first
+    final escapedMatch = escapedPattern.firstMatch(text);
+    if (escapedMatch != null) {
+      final type = escapedMatch.group(1) ?? 'note';
+      final content = escapedMatch.group(2)?.trim() ?? '';
+
+      final calloutColors = getCalloutColors(context, config);
+      final backgroundColor = calloutColors[type] ?? calloutColors['note']!;
+
+      // Capitalize the type for display
+      final displayType =
+          type.substring(0, 1).toUpperCase() + type.substring(1);
+
+      return _buildCalloutWidget(
+        context,
+        displayType,
+        content,
+        backgroundColor,
+        type,
+        config,
+      );
+    }
+
+    // Then check for unescaped pattern
+    final match = pattern.firstMatch(text);
+    if (match == null) {
+      return const SizedBox.shrink();
+    }
+
+    final type = match.group(1) ?? 'note';
+    final content = match.group(2)?.trim() ?? '';
+
+    final calloutColors = getCalloutColors(context, config);
+    final backgroundColor = calloutColors[type] ?? calloutColors['note']!;
+
+    // Capitalize the type for display
+    final displayType = type.substring(0, 1).toUpperCase() + type.substring(1);
+
+    return _buildCalloutWidget(
+      context,
+      displayType,
+      content,
+      backgroundColor,
+      type,
+      config,
+    );
+  }
+
+  String getDisplayText(String displayType, String mainContent) {
+    // Checks for "**Note:**", "Note:", "**Note:** ", etc.
+    final typePattern = RegExp(
+      r'^\s*(\*\*|__)?' + RegExp.escape(displayType) + r':?(\*\*|__)?',
+      caseSensitive: false,
+    );
+    if (typePattern.hasMatch(mainContent)) {
+      return mainContent;
+    } else {
+      return "$displayType: $mainContent";
+    }
+  }
+
+  // Helper method to build the callout widget
+  Widget _buildCalloutWidget(
+    BuildContext context,
+    String displayType,
+    String content,
+    Color backgroundColor,
+    String type,
+    GptMarkdownConfig config,
+  ) {
+    // Check if content contains a label section
+    final RegExp labelPattern = RegExp(
+      r'^\s*\[label\s+(.*?)\]\s*\n',
+      multiLine: true,
+    );
+    final labelMatch = labelPattern.firstMatch(content);
+
+    String labelText = '';
+    String mainContent = content;
+
+    if (labelMatch != null) {
+      // Extract the label text and the remaining content
+      labelText = labelMatch.group(1) ?? '';
+      mainContent = content.substring(labelMatch.end).trim();
+
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(8.0),
+          border: Border.all(color: backgroundColor, width: 1.0),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Label with markdown support
+              RichText(
+                text: TextSpan(
+                  children: MarkdownComponent.generate(
+                    context,
+                    labelText,
+                    config,
+                    true,
+                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Main content
+              RichText(
+                text: TextSpan(
+                  children: MarkdownComponent.generate(
+                    context,
+                    mainContent,
+                    config,
+                    true,
+                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      // No label, just render the content with the type
+      return Container(
+        width: double.infinity,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(8.0),
+          border: Border.all(color: backgroundColor, width: 1.0),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: RichText(
+            text: TextSpan(
+              children: MarkdownComponent.generate(
+                context,
+                getDisplayText(displayType, mainContent),
+                config,
+                true,
+              ),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+        ),
+      );
+    }
+  }
+}
