@@ -30,8 +30,8 @@ abstract class MarkdownComponent {
     TableMd(),
     StrikeMd(),
     BoldMd(),
+    UnderlineMd(), // Move UnderlineMd before ItalicMd
     ItalicMd(),
-    UnderlineMd(),
     LatexMath(),
     LatexMathMultiLine(),
     HighlightedText(),
@@ -684,6 +684,26 @@ class ItalicMd extends InlineMd {
     String text,
     final GptMarkdownConfig config,
   ) {
+    // Skip processing if this is an underline pattern
+    if (text.trim().startsWith('__') && text.trim().endsWith('__')) {
+      // Extract the text between the double underscores
+      String content = text.trim();
+      content = content.substring(2, content.length - 2);
+
+      // Create a dedicated style for underline with explicit properties
+      final underlineStyle = TextStyle(
+        decoration: TextDecoration.underline,
+        decorationColor: config.style?.color,
+        decorationThickness: 1.5, // Increased thickness for better visibility
+        decorationStyle: TextDecorationStyle.solid,
+        color: config.style?.color,
+        fontSize: config.style?.fontSize,
+        fontFamily: config.style?.fontFamily,
+        fontWeight: config.style?.fontWeight,
+      );
+      return TextSpan(text: content, style: underlineStyle);
+    }
+
     var match = exp.firstMatch(text.trim());
     var data = match?[1] ?? match?[2];
     var conf = config.copyWith(
@@ -700,8 +720,8 @@ class ItalicMd extends InlineMd {
 
 class UnderlineMd extends InlineMd {
   @override
-  // Simplified regex pattern that better matches __text__ without conflicts
-  RegExp get exp => RegExp(r"__([^_]+?)__");
+  // Improved regex pattern to better match __text__ without conflicts
+  RegExp get exp => RegExp(r"__(.*?)__");
 
   @override
   InlineSpan span(
