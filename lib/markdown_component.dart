@@ -3,6 +3,7 @@ part of 'gpt_markdown.dart';
 /// Markdown components
 abstract class MarkdownComponent {
   static List<MarkdownComponent> get globalComponents => [
+    OutputBlockMd(), // Move OutputBlockMd to the beginning of the list for priority
     CodeBlockMd(),
     LatexMathMultiLine(),
     NewLines(),
@@ -538,7 +539,7 @@ class HighlightedText extends InlineMd {
     // Determine which pattern matched (backticks or <^> tags)
     String highlightedText = "";
     bool isSpecialHighlight = false;
-    
+
     if (match[1] != null) {
       // Backtick pattern matched
       highlightedText = match[2] ?? "";
@@ -560,25 +561,35 @@ class HighlightedText extends InlineMd {
     }
 
     // Create a highlighted style with a background color
-    var style = config.style?.copyWith(
-      fontWeight: FontWeight.bold,
-      color: isSpecialHighlight ? Colors.white : Colors.black,
-      background: Paint()
-        ..color = isSpecialHighlight 
-            ? const Color(0xFF334155) // Darker background for <^> tags
-            : Theme.of(context).primaryColor.withOpacity(0.2)
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    ) ?? TextStyle(
-      fontWeight: FontWeight.bold,
-      color: isSpecialHighlight ? Colors.white : Colors.black,
-      background: Paint()
-        ..color = isSpecialHighlight 
-            ? const Color(0xFF334155) // Darker background for <^> tags
-            : Theme.of(context).primaryColor.withOpacity(0.2)
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round,
-    );
+    var style =
+        config.style?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: isSpecialHighlight ? Colors.white : Colors.black,
+          background:
+              Paint()
+                ..color =
+                    isSpecialHighlight
+                        ? const Color(
+                          0xFF334155,
+                        ) // Darker background for <^> tags
+                        : Theme.of(context).primaryColor.withOpacity(0.2)
+                ..strokeCap = StrokeCap.round
+                ..strokeJoin = StrokeJoin.round,
+        ) ??
+        TextStyle(
+          fontWeight: FontWeight.bold,
+          color: isSpecialHighlight ? Colors.white : Colors.black,
+          background:
+              Paint()
+                ..color =
+                    isSpecialHighlight
+                        ? const Color(
+                          0xFF334155,
+                        ) // Darker background for <^> tags
+                        : Theme.of(context).primaryColor.withOpacity(0.2)
+                ..strokeCap = StrokeCap.round
+                ..strokeJoin = StrokeJoin.round,
+        );
 
     // Check if the highlighted text contains nested patterns
     if (highlightedText.contains("`") || highlightedText.contains("<^>")) {
@@ -1376,20 +1387,106 @@ class TableMd extends BlockMd {
 class CodeBlockMd extends BlockMd {
   @override
   String get expString => r"```(.*?)\n((.*?)(:?\n\s*?```)|(.*)(:?\n```)?)$";
+
+  // Secondary label regex pattern
+  final RegExp secondaryLabelRegex = RegExp(
+    r'^\[secondary_label\s+([^\]]+)\]',
+    multiLine: true,
+  );
+
+  bool canProcess(String text) {
+    // Check if this is a secondary_label output block
+    if (text.trim().startsWith('[secondary_label')) {
+      return true;
+    }
+
+    // Otherwise check if it's a regular code block
+    return text.contains('```') && this.exp.hasMatch(text);
+  }
+
   @override
   Widget build(
     BuildContext context,
     String text,
     final GptMarkdownConfig config,
   ) {
+    // First process as a normal code block to extract the code content
     String codes = this.exp.firstMatch(text)?[2] ?? "";
     String name = this.exp.firstMatch(text)?[1] ?? "";
 
+    // Now check if the code content itself contains a secondary_label pattern
+    if (codes.trim().startsWith('[secondary_label')) {
+      // Extract the label text
+      final match = secondaryLabelRegex.firstMatch(codes);
+
+      if (match != null) {
+        // Extract the label text (e.g., "Output", "Topic", etc.)
+        final String labelText = match.group(1) ?? '';
+
+        // Extract the content after the label line
+        final parts = codes.split('\n');
+        var outputText =
+            parts.length > 1 ? parts.sublist(1).join('\n').trim() : '';
+
+        // Remove trailing triple backticks if present
+        if (outputText.endsWith('```')) {
+          outputText = outputText.substring(0, outputText.length - 3).trim();
+        }
+
+        // Return the OutputField widget
+        return OutputField(
+          type: 'secondary_label',
+          labelText: labelText,
+          output: outputText,
+        );
+      }
+    }
+
+    // If the text itself starts with secondary_label (not inside code block)
+    if (text.trim().startsWith('[secondary_label')) {
+      // Extract the label text
+      final match = secondaryLabelRegex.firstMatch(text);
+
+      if (match != null) {
+        // Extract the label text (e.g., "Output", "Topic", etc.)
+        final String labelText = match.group(1) ?? '';
+
+        // Extract the content after the label line
+        final parts = text.split('\n');
+        var outputText =
+            parts.length > 1 ? parts.sublist(1).join('\n').trim() : '';
+
+        // Remove trailing triple backticks if present
+        if (outputText.endsWith('```')) {
+          outputText = outputText.substring(0, outputText.length - 3).trim();
+        }
+
+        // Return the OutputField widget
+        return OutputField(
+          type: 'secondary_label',
+          labelText: labelText,
+          output: outputText,
+        );
+      }
+    }
+
+    // Continue with normal code block processing
     // Parse label and custom properties from the name field
     String label = "";
     String language = "";
     Color? backgroundColor;
-    
+    bool showLineNumbers = false;
+
+    // Check for line_numbers parameter
+    if (name.contains("line_numbers")) {
+      showLineNumbers = true;
+      name = name.replaceAll("line_numbers", "").trim();
+      // Remove leading comma if present
+      if (name.startsWith(",")) {
+        name = name.substring(1).trim();
+      }
+    }
+
     // First check if the label is in the code content itself (first line)
     final labelInCodeRegex = RegExp(
       r'^\s*\[label\s+(.*?)\]\s*$',
@@ -1409,7 +1506,7 @@ class CodeBlockMd extends BlockMd {
         name = name.replaceAll(labelMatch.group(0) ?? "", "").trim();
       }
     }
-    
+
     // Extract custom background color property
     if (name.contains("background=")) {
       final colorMatch = RegExp(r"background=([#\w]+)").firstMatch(name);
@@ -1452,12 +1549,18 @@ class CodeBlockMd extends BlockMd {
     // Process highlighted text in the code content
     codes = _processHighlightedText(codes);
 
+    // Remove trailing triple backticks if present
+    if (codes.endsWith('```')) {
+      codes = codes.substring(0, codes.length - 3).trim();
+    }
+
     return config.codeBuilder?.call(context, language, codes, closed) ??
         CodeField(
           name: language,
           codes: codes,
           label: label,
           backgroundColor: backgroundColor,
+          showLineNumbers: showLineNumbers,
         );
   }
 
@@ -1465,11 +1568,11 @@ class CodeBlockMd extends BlockMd {
   String _processHighlightedText(String code) {
     // Replace <^>text<^> with a custom span that will be styled with dark background
     final highlightPattern = RegExp(r'<\^>(.*?)<\^>');
-    
+
     // We don't actually transform the text here, as the HighlightedText class
     // will handle the rendering with proper styling. We just ensure the pattern
     // is preserved correctly.
-    
+
     // If we need to do any preprocessing of the pattern, we would do it here
     return code;
   }
@@ -1983,5 +2086,56 @@ Future<bool> launchUrl(Uri url) async {
   } catch (e) {
     debugPrint('Error launching URL: $e');
     return false;
+  }
+}
+
+/// Output block component for rendering labeled output blocks
+///
+/// This component handles markdown in the format:
+/// ```
+/// [secondary_label Output]
+/// Could not connect to Redis at 127.0.0.1:6379: Connection refused
+/// ```
+class OutputBlockMd extends BlockMd {
+  @override
+  String get expString => r'\[secondary_label\s+([^\]]+)\][\s\S]*?';
+
+  @override
+  RegExp get exp => RegExp(
+    r'\[secondary_label\s+([^\]]+)\][\s\S]*?',
+    multiLine: true,
+    dotAll: true,
+  );
+
+  @override
+  Widget build(BuildContext context, String text, GptMarkdownConfig config) {
+    // Extract the label and content from the markdown
+    final RegExp labelRegex = RegExp(r'\[secondary_label\s+([^\]]+)\]');
+    final match = labelRegex.firstMatch(text);
+
+    if (match != null) {
+      // Extract the label text (e.g., "Output", "Topic", etc.)
+      final String labelText = match.group(1) ?? '';
+
+      // Extract the content after the [secondary_label X] line
+      final parts = text.split('\n');
+      var outputText =
+          parts.length > 1 ? parts.sublist(1).join('\n').trim() : '';
+
+      // Remove trailing triple backticks if present
+      if (outputText.endsWith('```')) {
+        outputText = outputText.substring(0, outputText.length - 3).trim();
+      }
+
+      // Create the OutputField with the extracted label
+      return OutputField(
+        type: 'secondary_label',
+        labelText: labelText,
+        output: outputText,
+      );
+    }
+
+    // Fallback if there's no match
+    return Text(text);
   }
 }

@@ -20,14 +20,16 @@ class CodeField extends StatefulWidget {
   final String codes;
   final String label;
   final Color? backgroundColor;
+  final bool showLineNumbers;
 
   const CodeField({
-    Key? key,
+    super.key,
     required this.name,
     required this.codes,
     this.label = "",
     this.backgroundColor,
-  }) : super(key: key);
+    this.showLineNumbers = false,
+  });
 
   @override
   State<CodeField> createState() => _CodeFieldState();
@@ -80,9 +82,9 @@ class _CodeFieldState extends State<CodeField> {
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
-                      vertical: 12,
+                      vertical: 8,
                     ),
-                    color: const Color(0xFF1E293B),
+                    color: widget.backgroundColor ?? const Color(0xFF29334D),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -97,40 +99,59 @@ class _CodeFieldState extends State<CodeField> {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        ElevatedButton(
-                          onPressed: _copyToClipboard,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white.withOpacity(0.2),
-                            foregroundColor: Colors.white,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                          ),
+                        GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onTap: _copyToClipboard,
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 _copied ? Icons.check : Icons.content_copy,
                                 size: 16,
+                                color: Colors.white,
                               ),
-                              const SizedBox(width: 8),
-                              Text(_copied ? 'Copied' : 'Copy'),
                             ],
                           ),
                         ),
                       ],
                     ),
                   ),
-                // Code content
-                Container(
-                  color: widget.backgroundColor ?? const Color(0xFF0F172A),
-                  padding: const EdgeInsets.all(16),
-                  child: _buildFormattedCodeText(widget.codes),
+                if (!hasLabel)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    alignment: Alignment.centerRight,
+                    color: widget.backgroundColor ?? const Color(0xFF29334D),
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTap: _copyToClipboard,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _copied ? Icons.check : Icons.content_copy,
+                            size: 16,
+                            color: Colors.white,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                // Code content with optional top-right copy button
+                Stack(
+                  children: [
+                    Container(
+                      color: widget.backgroundColor ?? const Color(0xFF0F172A),
+                      padding: const EdgeInsets.all(16),
+                      width: double.infinity,
+                      child:
+                          widget.showLineNumbers
+                              ? _buildCodeWithLineNumbers(widget.codes)
+                              : _buildFormattedCodeText(widget.codes),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -166,44 +187,50 @@ class _CodeFieldState extends State<CodeField> {
     for (final match in matches) {
       // Add text before the match
       if (match.start > lastMatchEnd) {
-        spans.add(TextSpan(
-          text: code.substring(lastMatchEnd, match.start),
-          style: const TextStyle(
-            fontFamily: 'monospace',
-            fontSize: 14,
-            color: Colors.white,
-            height: 1.5,
+        spans.add(
+          TextSpan(
+            text: code.substring(lastMatchEnd, match.start),
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 14,
+              color: Colors.white,
+              height: 1.5,
+            ),
           ),
-        ));
+        );
       }
 
       // Add the highlighted text
-      spans.add(TextSpan(
-        text: match.group(1), // The text between <^> tags
-        style: const TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 14,
-          fontWeight: FontWeight.bold,
-          color: Colors.white,
-          height: 1.5,
-          backgroundColor: Color(0xFF334155), // Dark background color
+      spans.add(
+        TextSpan(
+          text: match.group(1), // The text between <^> tags
+          style: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            height: 1.5,
+            backgroundColor: Color(0xFF334155), // Dark background color
+          ),
         ),
-      ));
+      );
 
       lastMatchEnd = match.end;
     }
 
     // Add any remaining text after the last match
     if (lastMatchEnd < code.length) {
-      spans.add(TextSpan(
-        text: code.substring(lastMatchEnd),
-        style: const TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 14,
-          color: Colors.white,
-          height: 1.5,
+      spans.add(
+        TextSpan(
+          text: code.substring(lastMatchEnd),
+          style: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 14,
+            color: Colors.white,
+            height: 1.5,
+          ),
         ),
-      ));
+      );
     }
 
     return SelectableText.rich(
@@ -215,5 +242,131 @@ class _CodeFieldState extends State<CodeField> {
         height: 1.5,
       ),
     );
+  }
+
+  // Build code with line numbers
+  Widget _buildCodeWithLineNumbers(String code) {
+    final lines = code.split('\n');
+    final lineCount = lines.length;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Line numbers column
+        Container(
+          padding: const EdgeInsets.only(right: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: List.generate(
+              lineCount,
+              (index) => Container(
+                padding: const EdgeInsets.symmetric(vertical: 1.5),
+                child: Text(
+                  '${index + 1}',
+                  style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 14,
+                    color: Color(0xFF64748B), // Slate-500 color
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        // Line separator
+        Container(
+          width: 1,
+          height: lineCount * 21, // Approximate line height
+          color: const Color(0xFF334155), // Slate-700 color
+          margin: const EdgeInsets.only(right: 12),
+        ),
+        // Code content
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: List.generate(
+              lineCount,
+              (index) => Container(
+                padding: const EdgeInsets.symmetric(vertical: 1.5),
+                child: _buildFormattedCodeLine(lines[index]),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Format a single line of code with highlighting
+  Widget _buildFormattedCodeLine(String line) {
+    // Regular expression to match <^>text<^> patterns
+    final pattern = RegExp(r'<\^>(.*?)<\^>');
+    final matches = pattern.allMatches(line);
+
+    if (matches.isEmpty) {
+      // If no special patterns, just return the text as is
+      return Text(
+        line,
+        style: const TextStyle(
+          fontFamily: 'monospace',
+          fontSize: 14,
+          color: Colors.white,
+          height: 1.5,
+        ),
+      );
+    }
+
+    // Build rich text with highlighted spans
+    final List<TextSpan> spans = [];
+    int lastMatchEnd = 0;
+
+    for (final match in matches) {
+      // Add text before the match
+      if (match.start > lastMatchEnd) {
+        spans.add(
+          TextSpan(
+            text: line.substring(lastMatchEnd, match.start),
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 14,
+              color: Colors.white,
+            ),
+          ),
+        );
+      }
+
+      // Add the highlighted text
+      spans.add(
+        TextSpan(
+          text: match.group(1), // The text between <^> tags
+          style: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            backgroundColor: Color(0xFF334155), // Dark background color
+          ),
+        ),
+      );
+
+      lastMatchEnd = match.end;
+    }
+
+    // Add any remaining text after the last match
+    if (lastMatchEnd < line.length) {
+      spans.add(
+        TextSpan(
+          text: line.substring(lastMatchEnd),
+          style: const TextStyle(
+            fontFamily: 'monospace',
+            fontSize: 14,
+            color: Colors.white,
+          ),
+        ),
+      );
+    }
+
+    return RichText(text: TextSpan(children: spans), softWrap: true);
   }
 }
