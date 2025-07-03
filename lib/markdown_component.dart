@@ -1347,60 +1347,139 @@ class TableMd extends BlockMd {
       child: SingleChildScrollView(
         controller: controller,
         scrollDirection: Axis.horizontal,
-        child: Table(
-          textDirection: config.textDirection,
-          defaultColumnWidth: CustomTableColumnWidth(),
-          defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-          border: TableBorder.all(
-            width: 1,
-            color: Theme.of(context).colorScheme.onSurface,
+        physics: const AlwaysScrollableScrollPhysics(),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            // Set minimum width but no maximum to allow scrolling
+            minWidth: MediaQuery.of(context).size.width * 0.85,
           ),
-          children:
-              value
-                  .asMap()
-                  .entries
-                  .map<TableRow>(
-                    (entry) => TableRow(
-                      decoration:
-                          (heading)
-                              ? BoxDecoration(
-                                color:
-                                    (entry.key == 0)
-                                        ? Theme.of(
-                                          context,
-                                        ).colorScheme.surfaceContainerHighest
-                                        : null,
-                              )
-                              : null,
-                      children: List.generate(maxCol, (index) {
-                        var e = entry.value;
-                        String data = e[index] ?? "";
-                        if (RegExp(r"^:?--+:?$").hasMatch(data.trim()) ||
-                            data.trim().isEmpty) {
-                          return const SizedBox();
-                        }
+          child: Table(
+            textDirection: config.textDirection,
+            defaultColumnWidth: TableColumnWidthWrapping(),
+            defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+            border: TableBorder.all(
+              width: 1,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            children:
+                value
+                    .asMap()
+                    .entries
+                    .map<TableRow>(
+                      (entry) => TableRow(
+                        decoration:
+                            (heading)
+                                ? BoxDecoration(
+                                  color:
+                                      (entry.key == 0)
+                                          ? Theme.of(
+                                            context,
+                                          ).colorScheme.surfaceContainerHighest
+                                          : null,
+                                )
+                                : null,
+                        children: List.generate(maxCol, (index) {
+                          var e = entry.value;
+                          String data = e[index] ?? "";
+                          if (RegExp(r"^:?--+:?$").hasMatch(data.trim()) ||
+                              data.trim().isEmpty) {
+                            return const SizedBox();
+                          }
 
-                        return Center(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            child: MdWidget(
-                              context,
-                              (e[index] ?? "").trim(),
-                              false,
-                              config: config,
-                            ),
-                          ),
-                        );
-                      }),
-                    ),
-                  )
-                  .toList(),
+                          // Use Align with centerLeft for first column, Center for others
+                          return index == 0
+                              ? Align(
+                                alignment: Alignment.centerLeft,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  child: Container(
+                                    width:
+                                        index < 2
+                                            ? MediaQuery.of(
+                                                  context,
+                                                ).size.width /
+                                                2.5
+                                            : MediaQuery.of(
+                                                  context,
+                                                ).size.width /
+                                                3.5,
+                                    alignment: Alignment.centerLeft,
+                                    child: MdWidget(
+                                      context,
+                                      (e[index] ?? "").trim(),
+                                      false,
+                                      config: config.copyWith(
+                                        textAlign: TextAlign.left,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              )
+                              : Align(
+                                alignment: Alignment.centerRight,
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  child: Container(
+                                    width:
+                                        index < 2
+                                            ? MediaQuery.of(
+                                                  context,
+                                                ).size.width /
+                                                2.5
+                                            : MediaQuery.of(
+                                                  context,
+                                                ).size.width /
+                                                3.5,
+                                    alignment: Alignment.centerRight,
+                                    child: MdWidget(
+                                      context,
+                                      (e[index] ?? "").trim(),
+                                      false,
+                                      config: config.copyWith(
+                                        textAlign: TextAlign.right,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                        }),
+                      ),
+                    )
+                    .toList(),
+          ),
         ),
       ),
     );
+  }
+}
+
+class TableColumnWidthWrapping extends TableColumnWidth {
+  @override
+  double maxIntrinsicWidth(Iterable<RenderBox> cells, double containerWidth) {
+    double result = 0.0;
+    for (final RenderBox cell in cells) {
+      result = math.max(result, cell.getMaxIntrinsicWidth(double.infinity));
+    }
+    return result;
+  }
+
+  @override
+  double minIntrinsicWidth(Iterable<RenderBox> cells, double containerWidth) {
+    double result = 0.0;
+    for (final RenderBox cell in cells) {
+      // Use a reasonable minimum width to ensure text wrapping works
+      result = math.max(
+        result,
+        math.min(cell.getMinIntrinsicWidth(double.infinity), 150.0),
+      );
+    }
+    return result;
   }
 }
 
