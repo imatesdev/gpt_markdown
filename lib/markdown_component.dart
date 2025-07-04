@@ -1386,6 +1386,9 @@ class TableMd extends BlockMd {
                             return const SizedBox();
                           }
 
+                          // Process HTML tags like <br> before passing to MdWidget
+                          String processedData = _processHtmlTags(data.trim());
+
                           // Use Align with centerLeft for first column, Center for others
                           return index == 0
                               ? Align(
@@ -1409,7 +1412,7 @@ class TableMd extends BlockMd {
                                     alignment: Alignment.centerLeft,
                                     child: MdWidget(
                                       context,
-                                      (e[index] ?? "").trim(),
+                                      processedData,
                                       false,
                                       config: config.copyWith(
                                         textAlign: TextAlign.left,
@@ -1439,7 +1442,7 @@ class TableMd extends BlockMd {
                                     alignment: Alignment.centerRight,
                                     child: MdWidget(
                                       context,
-                                      (e[index] ?? "").trim(),
+                                      processedData,
                                       false,
                                       config: config.copyWith(
                                         textAlign: TextAlign.right,
@@ -1456,6 +1459,20 @@ class TableMd extends BlockMd {
         ),
       ),
     );
+  }
+
+  // Helper method to process HTML tags in table cell content
+  String _processHtmlTags(String text) {
+    // Replace <br> tags with actual newlines
+    String processed = text.replaceAll(
+      RegExp(r'<br\s*\/?>', caseSensitive: false),
+      '\n',
+    );
+
+    // Handle other common HTML tags if needed
+    // processed = processed.replaceAll(...);
+
+    return processed;
   }
 }
 
@@ -1680,7 +1697,7 @@ class CodeBlockMd extends BlockMd {
 /// Currency component
 class CurrencyMd extends InlineMd {
   @override
-  RegExp get exp => RegExp(r'(?<!\\)([₹\$])(\d[\d,.]*)');
+  RegExp get exp => RegExp(r'(?<!\\)([$₹])(\d[\d,.]*)');
 
   @override
   InlineSpan span(
@@ -1689,8 +1706,20 @@ class CurrencyMd extends InlineMd {
     final GptMarkdownConfig config,
   ) {
     var match = exp.firstMatch(text.trim());
+    if (match == null) {
+      // Check if this is an escaped currency symbol
+      var escapedMatch = RegExp(r'\\([$₹])(\d[\d,.]*)').firstMatch(text.trim());
+      if (escapedMatch != null) {
+        // For escaped currency symbols, just display the symbol and amount without the backslash
+        return TextSpan(
+          text: "${escapedMatch[1]}${escapedMatch[2]}",
+          style: config.style,
+        );
+      }
+      return TextSpan(text: text, style: config.style);
+    }
     return TextSpan(
-      text: "${match?[1]}${match?[2]}", // Combine currency symbol and amount
+      text: "${match[1]}${match[2]}", // Combine currency symbol and amount
       style: config.style,
     );
   }
