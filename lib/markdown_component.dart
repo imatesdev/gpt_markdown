@@ -1469,6 +1469,18 @@ class TableMd extends BlockMd {
       '\n',
     );
 
+    // Handle escaped characters like \$, \*, \_, etc.
+    processed = processed.replaceAllMapped(
+      RegExp(r'\\([\$\*\_\~\`\|\[\]\(\)\#\+\-\.\!\>\<])', caseSensitive: true),
+      (match) => match.group(1) ?? '',
+    );
+
+    // Normalize spacing between currency symbols and numbers
+    processed = processed.replaceAllMapped(
+      RegExp(r'([\$₹€£¥])(\s+)(\d)'),
+      (match) => '${match.group(1)}${match.group(3)}',
+    );
+
     // Handle other common HTML tags if needed
     // processed = processed.replaceAll(...);
 
