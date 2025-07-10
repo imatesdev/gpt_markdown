@@ -48,6 +48,8 @@ class GptMarkdown extends StatelessWidget {
     this.inlineComponents,
     this.useDollarSignsForLatex = false,
     this.calloutColors,
+    this.boldColor,
+    this.isInsideHeading = false,
   });
 
   /// The direction of the text.
@@ -107,6 +109,12 @@ class GptMarkdown extends StatelessWidget {
 
   /// The callout colors.
   final Map<String, Color>? calloutColors;
+
+  /// Custom color for bold text. If null, the default text color will be used.
+  final Color? boldColor;
+
+  /// Flag to indicate if we're currently inside a heading.
+  final bool isInsideHeading;
 
   /// The list of components.
   ///  ```dart
@@ -191,6 +199,15 @@ class GptMarkdown extends StatelessWidget {
         );
       }
     }
+    if (components != null) {
+      for (var component in components!) {
+        if (component is CodeBlockMd) {
+          if (component.canProcess(tex)) {
+            return component.build(context, tex, GptMarkdownConfig());
+          }
+        }
+      }
+    }
     return ClipRRect(
       child: MdWidget(
         context,
@@ -217,6 +234,8 @@ class GptMarkdown extends StatelessWidget {
           components: components,
           inlineComponents: inlineComponents,
           calloutColors: calloutColors,
+          boldColor: boldColor,
+          isInsideHeading: isInsideHeading,
         ),
       ),
     );

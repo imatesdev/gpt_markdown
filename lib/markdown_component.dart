@@ -3,7 +3,7 @@ part of 'gpt_markdown.dart';
 /// Markdown components
 abstract class MarkdownComponent {
   static List<MarkdownComponent> get globalComponents => [
-    OutputBlockMd(), // Move OutputBlockMd to the beginning of the list for priority
+    OutputBlockMd(),
     CodeBlockMd(),
     LatexMathMultiLine(),
     NewLines(),
@@ -17,10 +17,10 @@ abstract class MarkdownComponent {
     HrLine(),
     IndentMd(),
     UnderlineMd(),
-    DirectUrlMd(), // Add DirectUrlMd to the components list
-    CalloutMd(), // Add CalloutMd to the components list
-    DetailsMd(), // Add DetailsMd to the components list
-    YoutubeMd(), // Add YoutubeMd to the components list
+    DirectUrlMd(),
+    CalloutMd(),
+    DetailsMd(),
+    YoutubeMd(),
   ];
 
   static final List<MarkdownComponent> inlineComponents = [
@@ -30,14 +30,14 @@ abstract class MarkdownComponent {
     TableMd(),
     StrikeMd(),
     BoldMd(),
-    UnderlineMd(), // Move UnderlineMd before ItalicMd
+    UnderlineMd(),
     ItalicMd(),
     LatexMath(),
     LatexMathMultiLine(),
     HighlightedText(),
     SourceTag(),
-    DirectUrlMd(), // Add DirectUrlMd to the inlineComponents list
-    CalloutMd(), // Add CalloutMd to the components list
+    DirectUrlMd(),
+    CalloutMd(),
   ];
 
   /// Generate widget for markdown widget
@@ -233,8 +233,12 @@ class HTag extends BlockMd {
         headingStyle = theme.h1;
     }
 
+    // Create a config that explicitly sets isInsideHeading=true and clears boldColor
+    // This ensures that any bold text inside headings won't use the custom boldColor
+    var headingConfig = config.copyWith(isInsideHeading: true, boldColor: null);
+
     // Ensure the heading style is applied correctly
-    var conf = config.copyWith(
+    var conf = headingConfig.copyWith(
       style: headingStyle?.copyWith(
         color: headingStyle.color ?? config.style?.color,
         fontSize: headingStyle.fontSize,
@@ -244,17 +248,17 @@ class HTag extends BlockMd {
         decorationThickness: headingStyle.decorationThickness,
         height: headingStyle.height,
       ),
+      // Ensure isInsideHeading is still true after style changes
+      isInsideHeading: true,
     );
 
-    return config.getRich(
+    // Get the heading content
+    String headingContent = "${match.namedGroup('data')}";
+
+    return headingConfig.getRich(
       TextSpan(
         children: [
-          ...(MarkdownComponent.generate(
-            context,
-            "${match.namedGroup('data')}",
-            conf,
-            false,
-          )),
+          ...(MarkdownComponent.generate(context, headingContent, conf, false)),
           if (match.namedGroup('hash')!.length == 1) ...[
             const TextSpan(
               text: "\n ",
@@ -264,7 +268,7 @@ class HTag extends BlockMd {
               child: CustomDivider(
                 height: theme.hrLineThickness,
                 color:
-                    config.style?.color ??
+                    headingConfig.style?.color ??
                     Theme.of(context).colorScheme.outline,
               ),
             ),
@@ -622,10 +626,17 @@ class BoldMd extends InlineMd {
     final GptMarkdownConfig config,
   ) {
     var match = exp.firstMatch(text.trim());
+
+    // Only apply boldColor if we're not inside a heading
+    Color? colorToUse = config.isInsideHeading ? null : config.boldColor;
+
     var conf = config.copyWith(
       style:
-          config.style?.copyWith(fontWeight: FontWeight.bold) ??
-          const TextStyle(fontWeight: FontWeight.bold),
+          config.style?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: colorToUse ?? config.style?.color,
+          ) ??
+          TextStyle(fontWeight: FontWeight.bold, color: colorToUse),
     );
     return TextSpan(
       children: MarkdownComponent.generate(
