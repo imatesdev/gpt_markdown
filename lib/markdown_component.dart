@@ -576,7 +576,9 @@ class HighlightedText extends InlineMd {
                         ? const Color(
                           0xFF334155,
                         ) // Darker background for <^> tags
-                        : Theme.of(context).primaryColor.withOpacity(0.2)
+                        : Theme.of(context).brightness == Brightness.light
+                        ? Theme.of(context).primaryColor.withOpacity(0.2)
+                        : const Color(0xFFFFFFFF).withOpacity(0.5)
                 ..strokeCap = StrokeCap.round
                 ..strokeJoin = StrokeJoin.round,
         ) ??
@@ -590,7 +592,9 @@ class HighlightedText extends InlineMd {
                         ? const Color(
                           0xFF334155,
                         ) // Darker background for <^> tags
-                        : Theme.of(context).primaryColor.withOpacity(0.2)
+                        : Theme.of(context).brightness == Brightness.light
+                        ? Theme.of(context).primaryColor.withOpacity(0.2)
+                        : const Color(0xFFFFFFFF).withOpacity(0.5)
                 ..strokeCap = StrokeCap.round
                 ..strokeJoin = StrokeJoin.round,
         );
