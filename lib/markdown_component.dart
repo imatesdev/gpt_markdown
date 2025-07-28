@@ -47,6 +47,9 @@ abstract class MarkdownComponent {
     final GptMarkdownConfig config,
     bool includeGlobalComponents,
   ) {
+    // Process HTML tags first
+    text = _processHtmlTags(text);
+
     var components =
         includeGlobalComponents
             ? config.components ?? MarkdownComponent.globalComponents
@@ -91,6 +94,18 @@ abstract class MarkdownComponent {
     );
 
     return spans;
+  }
+
+  /// Helper method to process HTML tags in text
+  static String _processHtmlTags(String text) {
+    // Replace <br> and <br/> with newline
+    return text
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#39;', '\'');
   }
 
   InlineSpan span(
